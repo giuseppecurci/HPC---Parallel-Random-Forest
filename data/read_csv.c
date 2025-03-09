@@ -32,8 +32,8 @@ float** read_csv(const char *filename, int *num_rows, int *num_columns) {
     fgets(line, sizeof(line), file);
 
     // Dynamically allocate memory for the data matrix
-    float **data = (float**)malloc(sizeof(float*) * 1000);  // Maximum 1000 rows, adjust as needed
-    for (int i = 0; i < 1000; i++) {
+    float **data = (float**)malloc(sizeof(float*) * MAX_ROWS);  
+    for (int i = 0; i < MAX_ROWS; i++) {
         data[i] = (float*)malloc(sizeof(float) * (*num_columns));
     }
 

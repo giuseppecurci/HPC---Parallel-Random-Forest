@@ -16,7 +16,7 @@ int main() {
     printf("Loaded data:\n");
     for (int i = 0; i < num_rows; i++) {
         for (int j = 0; j < num_columns; j++) {
-            printf("%.2f ", data[i][j]);
+            printf("%.4f ", data[i][j]);
         }
         printf("\n");
     }
