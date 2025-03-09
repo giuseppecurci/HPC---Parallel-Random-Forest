@@ -50,3 +50,7 @@ modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
+
+# Local files
+hpc_venv/
+data/classification_dataset.csv
