@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "data/read_csv.h"
+#include "include/merge_sort.h"
 
 int main() {
     const char *filename = "data/classification_dataset.csv";  // Replace with your actual CSV file path
