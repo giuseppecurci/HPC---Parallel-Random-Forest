@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "read_csv.h"
+#include "../headers/read_csv.h"
 
 // Function to read CSV and return the data matrix
 float** read_csv(const char *filename, int *num_rows, int *num_columns) {

@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <float.h>
+#include "../headers/merge_sort.h"
 
 void merge(double *arr, double *temp, int left, int mid, int right) {
     int i = left;      // index left subarray
@@ -33,34 +34,34 @@ void merge(double *arr, double *temp, int left, int mid, int right) {
     }
 }
 
-static void mergeSortHelper(double *arr, double *temp, int left, int right) {
+void merge_sort_helper(double *arr, double *temp, int left, int right) {
     if (left < right) {
         int mid = left + (right - left) / 2;
 		// avoid integer overflow
         
         // Recursively sort the subarrays
-        mergeSortHelper(arr, temp, left, mid);
-        mergeSortHelper(arr, temp, mid + 1, right);
+        merge_sort_helper(arr, temp, left, mid);
+        merge_sort_helper(arr, temp, mid + 1, right);
         
         // Merge the sorted subarrays
         merge(arr, temp, left, mid, right);
     }
 }
 
-static void mergeSort(double *arr, int size) {
+void merge_sort(double *arr, int size) {
     double *temp = (double *)malloc(size * sizeof(double));
     if (temp == NULL) {
         printf("Memory allocation failed\n");
         return;
     }
     
-    mergeSortHelper(arr, temp, 0, size - 1);
+    merge_sort_helper(arr, temp, 0, size - 1);
 	// size-1 because we pass the last index of the array
     
     free(temp);
 }
 
-void printArray(double *arr, int size) {
+void print_array(double *arr, int size) {
     for (int i = 0; i < size; i++) {
         printf("%.6f ", arr[i]);
     }
