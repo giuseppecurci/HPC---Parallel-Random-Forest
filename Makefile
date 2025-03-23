@@ -9,7 +9,7 @@ all: final
 
 final: main.o merge_sort.o read_csv.o utils.o
 	echo "Linking and producing the final executable"
-	$(CC) $(FLAGS) main.o merge_sort.o read_csv.o utils.o -o final 
+	$(CC) $(FLAGS) main.o merge_sort.o read_csv.o utils.o -o final -lm
 
 %.o: $(SOURCE)/%.c
 	echo "Compiling $<"

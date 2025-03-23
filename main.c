@@ -48,6 +48,14 @@ int main(int argc, char *argv[]) {
         print_array(unsorted_array, num_rows, max_array_elements_print);
     }
 
+    // Calculate split sizes
+    int left_size = 10, right_size = 5;
+    float left_split[] = {1.0, 0.0, 1.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0};
+    float right_split[] = {1.0, 0.0, 1.0, 1.0, 1.0};
+
+    float entropy = get_entropy(left_split, right_split, left_size, right_size);
+    printf("Entropy: %.6f\n", entropy);
+
     // Free memory
     printf("Freeing memory\n");
     free(unsorted_array);
