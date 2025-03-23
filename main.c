@@ -9,15 +9,24 @@ int main(int argc, char *argv[]) {
     const char *filename = "data/classification_dataset.csv";  // Replace with your actual CSV file path
     int num_rows, num_columns;
     int max_matrix_rows_print = 0, max_array_elements_print = 0;  // Default: print nothing
+    int num_classes = 0;
 
     // Parse command-line arguments
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--print_matrix") == 0 && i + 1 < argc) {
             max_matrix_rows_print = atoi(argv[i + 1]);  // Convert to integer
-        } else if (strcmp(argv[i], "--print_sorted_array") == 0 && i + 1 < argc) {
-            max_array_elements_print = atoi(argv[i + 1]);
+        }
+        else if (strcmp(argv[i], "--num_classes") == 0 && i + 1 < argc) {
+            num_classes = atoi(argv[i + 1]);
         }
     }
+
+    if (num_classes <= 0) {
+        printf("Number of classes must be a positive integer. Use --num_classes argument.\n");
+        return 1;
+    }
+
+    printf("Number of classes: %d\n", num_classes);
 
     // Call read_csv to get the matrix
     float **data = read_csv(filename, &num_rows, &num_columns);
@@ -31,29 +40,13 @@ int main(int argc, char *argv[]) {
         print_matrix(data, num_rows, num_columns, max_matrix_rows_print);
     }
 
-    // Extract feature column for sorting
-    printf("Getting Unsorted array\n");
-    int feature_column = 1;  // Which feature to sort
-    float *unsorted_array = malloc(num_rows * sizeof(float));
-    for (int i = 0; i < num_rows; i++) {
-        unsorted_array[i] = data[i][feature_column];
-    }
-    
-    // Sort the array
-    merge_sort(unsorted_array, num_rows);
-    
-    // Print sorted array
-    if (max_array_elements_print != 0) {
-        printf("Sorted array, feature %d:\n", feature_column);
-        print_array(unsorted_array, num_rows, max_array_elements_print);
-    }
+    // Find the best split
+    BestSplit best_split = find_best_split(data, num_rows, num_columns, num_classes);
+    printf("Best entropy: %.6f, Best split: %.6f (Feature: %d)\n", 
+           best_split.entropy, best_split.threshold, best_split.feature_index);
 
-    // Free memory
-    printf("Freeing memory\n");
-    free(unsorted_array);
-    for (int i = 0; i < num_rows; i++) {
-        free(data[i]);
-    }
+    // Free allocated memory
+    for (int i = 0; i < num_rows; i++) free(data[i]);
     free(data);
 
     return 0;
