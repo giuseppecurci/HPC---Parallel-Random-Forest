@@ -2,6 +2,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "../headers/utils.h"
+#include "../headers/read_csv.h"
+#include "../headers/merge_sort.h"
 
 void print_matrix(float **data, int num_rows, int num_columns, int max_rows) {
     // If max_rows is -1 or greater than num_rows, print all rows
@@ -132,3 +134,45 @@ float* get_best_split_num_var(float *sorted_array, float *target_array, int size
         }
         return best_split;
     }
+
+BestSplit find_best_split(float **data, int num_rows, int num_columns, int num_classes) {
+    BestSplit best_split = {INFINITY, 0.0, -1};
+
+    for (int feature_col = 0; feature_col < num_columns; feature_col++) {
+        if (feature_col == TARGET_COLUMN) continue;  // Skip target column
+
+        // Allocate arrays for sorting
+        float *feature_values = malloc(num_rows * sizeof(float));
+        float *target_values = malloc(num_rows * sizeof(float));
+        if (!feature_values || !target_values) {
+            fprintf(stderr, "Memory allocation failed!\n");
+            exit(EXIT_FAILURE);
+        }
+
+        // Extract feature column and corresponding target values
+        for (int i = 0; i < num_rows; i++) {
+            feature_values[i] = data[i][feature_col];
+            target_values[i] = data[i][TARGET_COLUMN];
+        }
+
+        // Sort the feature and target values together
+        merge_sort(feature_values, target_values, num_rows);
+
+        // Find best split for this feature
+        float *feature_best_split = get_best_split_num_var(feature_values, target_values, num_rows, num_classes);
+
+        // Update the global best split if a lower entropy is found
+        if (feature_best_split[0] < best_split.entropy) {
+            best_split.entropy = feature_best_split[0];
+            best_split.threshold = feature_best_split[1];
+            best_split.feature_index = feature_col;
+        }
+
+        // Free allocated memory
+        free(feature_best_split);
+        free(feature_values);
+        free(target_values);
+    }
+
+    return best_split;
+}
