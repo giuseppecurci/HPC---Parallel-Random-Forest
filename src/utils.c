@@ -92,7 +92,7 @@ float get_entropy(float *left_split, float *right_split, int left_size, int righ
 
     //printf("Left entropy: %.6f\n", left_entropy);
     //printf("Right entropy: %.6f\n", right_entropy);
-    printf("Weighted entropy: %.6f\n", weighted_entropy);
+    //printf("Weighted entropy: %.6f\n", weighted_entropy);
     
     // Weighted entropy sum
     return weighted_entropy;

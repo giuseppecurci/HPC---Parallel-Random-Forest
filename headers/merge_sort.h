@@ -4,6 +4,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-void merge_sort(float *arr, int size);
+void merge_sort(float *features, float *targets, int size);
 
 #endif 

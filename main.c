@@ -44,7 +44,7 @@ int main(int argc, char *argv[]) {
 
     float *target_array = malloc(num_rows * sizeof(float));
     for (int i = 0; i < num_rows; i++) {
-        target_array[i] = data[i][20];
+        target_array[i] = data[i][5];
     }
 
     // Extract feature column for sorting
@@ -55,7 +55,7 @@ int main(int argc, char *argv[]) {
     }
     
     // Sort the array
-    merge_sort(unsorted_array, num_rows);
+    merge_sort(unsorted_array, target_array, num_rows);
     
     // Print sorted array
     if (max_array_elements_print != 0) {
@@ -79,6 +79,7 @@ int main(int argc, char *argv[]) {
     // Free memory
     printf("Freeing memory\n");
     free(unsorted_array);
+    free(best_split);
     for (int i = 0; i < num_rows; i++) {
         free(data[i]);
     }
