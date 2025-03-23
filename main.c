@@ -50,8 +50,8 @@ int main(int argc, char *argv[]) {
 
     // Calculate split sizes
     int left_size = 10, right_size = 5;
-    float left_split[] = {1.0, 0.0, 1.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0};
-    float right_split[] = {1.0, 0.0, 1.0, 1.0, 1.0};
+    float left_split[] = {0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+    float right_split[] = {0.0, 0.0, 0.0, 0.0, 0.0};
 
     float entropy = get_entropy(left_split, right_split, left_size, right_size);
     printf("Entropy: %.6f\n", entropy);

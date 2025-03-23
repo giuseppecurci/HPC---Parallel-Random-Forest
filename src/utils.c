@@ -64,7 +64,7 @@ float get_entropy(float *left_split, float *right_split, int left_size, int righ
         }
     }
 
-    if (p_left != 0.0) {
+    if (p_left > 0.0 && p_left != left_size) {
         p_left = p_left/left_size;
         left_entropy = -p_left * log2f(p_left) - (1-p_left) * log2f(1-p_left);
     }
@@ -78,13 +78,16 @@ float get_entropy(float *left_split, float *right_split, int left_size, int righ
             p_right += 1.0;
         }
     }
-    if (p_right != 0.0) {
+    if (p_right > 0.0 && p_right != right_size) {
         p_right = p_right/right_size;
         right_entropy = -p_right * log2f(p_right) - (1-p_right) * log2f(1-p_right);
     }
     else {
         right_entropy = 0.0;
     }
+
+    printf("Left Entropy: %.6f\n", left_entropy);
+    printf("Right Entropy: %.6f\n", right_entropy);
 
     // Calculate the weighted average of the child nodes' entropy
     return (left_size * left_entropy + right_size * right_entropy) / (left_size + right_size);
