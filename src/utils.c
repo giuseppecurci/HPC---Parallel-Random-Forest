@@ -1,5 +1,7 @@
-#include "../headers/utils.h"
 #include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include "../headers/utils.h"
 
 void print_matrix(float **data, int num_rows, int num_columns, int max_rows) {
     // If max_rows is -1 or greater than num_rows, print all rows
@@ -52,43 +54,44 @@ void print_array(float *arr, int size, int max_elements) {
     printf("\n");
 }
 
-float get_entropy(float *left_split, float *right_split, int left_size, int right_size) {
-    // Calculate the entropy of the left and right child nodes
-    float left_entropy = 0.0, right_entropy = 0.0;
-    float p_left = 0.0, p_right = 0.0;
+float compute_entropy(float *split, int size, int num_classes) {
+    if (size == 0) return 0.0;  // Prevent division by zero
 
-    // Calculate the entropy of the left child node
-    for (int i = 0; i < left_size; i++) {
-        if (left_split[i] == 1.0) {
-            p_left += 1.0;
+    // Allocate memory for class counts
+    int *class_counts = calloc(num_classes, sizeof(int));
+    if (!class_counts) {
+        fprintf(stderr, "Memory allocation failed!\n");
+        exit(EXIT_FAILURE);
+    }
+
+    // Count occurrences of each class
+    for (int i = 0; i < size; i++) {
+        int class_index = (int)split[i];  // Assuming classes are labeled as integers (0,1,2,...)
+        if (class_index >= 0 && class_index < num_classes) {
+            class_counts[class_index]++;
         }
     }
 
-    if (p_left > 0.0 && p_left != left_size) {
-        p_left = p_left/left_size;
-        left_entropy = -p_left * log2f(p_left) - (1-p_left) * log2f(1-p_left);
-    }
-    else {
-        left_entropy = 0.0;
-    }
-
-    // Calculate the entropy of the right child node
-    for (int i = 0; i < right_size; i++) {
-        if (right_split[i] == 1.0) {
-            p_right += 1.0;
+    // Compute entropy
+    float entropy = 0.0;
+    for (int i = 0; i < num_classes; i++) {
+        if (class_counts[i] > 0) {
+            float p = (float)class_counts[i] / size;
+            entropy -= p * log2f(p);
         }
     }
-    if (p_right > 0.0 && p_right != right_size) {
-        p_right = p_right/right_size;
-        right_entropy = -p_right * log2f(p_right) - (1-p_right) * log2f(1-p_right);
-    }
-    else {
-        right_entropy = 0.0;
-    }
 
-    printf("Left Entropy: %.6f\n", left_entropy);
-    printf("Right Entropy: %.6f\n", right_entropy);
+    free(class_counts);  // Free allocated memory
+    return entropy;
+}
 
-    // Calculate the weighted average of the child nodes' entropy
+float get_entropy(float *left_split, float *right_split, int left_size, int right_size, int num_classes) {
+    float left_entropy = compute_entropy(left_split, left_size, num_classes);
+    float right_entropy = compute_entropy(right_split, right_size, num_classes);
+
+    printf("Left entropy: %.6f\n", left_entropy);
+    printf("Right entropy: %.6f\n", right_entropy);
+    
+    // Weighted entropy sum
     return (left_size * left_entropy + right_size * right_entropy) / (left_size + right_size);
 }

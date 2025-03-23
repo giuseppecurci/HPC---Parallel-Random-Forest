@@ -9,6 +9,7 @@ int main(int argc, char *argv[]) {
     const char *filename = "data/classification_dataset.csv";  // Replace with your actual CSV file path
     int num_rows, num_columns;
     int max_matrix_rows_print = 0, max_array_elements_print = 0;  // Default: print nothing
+    int num_classes = 0;
 
     // Parse command-line arguments
     for (int i = 1; i < argc; i++) {
@@ -17,7 +18,17 @@ int main(int argc, char *argv[]) {
         } else if (strcmp(argv[i], "--print_sorted_array") == 0 && i + 1 < argc) {
             max_array_elements_print = atoi(argv[i + 1]);
         }
+        else if (strcmp(argv[i], "--num_classes") == 0 && i + 1 < argc) {
+            num_classes = atoi(argv[i + 1]);
+        }
     }
+
+    if (num_classes <= 0) {
+        printf("Number of classes must be a positive integer. Use --num_classes argument.\n");
+        return 1;
+    }
+
+    printf("Number of classes: %d\n", num_classes);
 
     // Call read_csv to get the matrix
     float **data = read_csv(filename, &num_rows, &num_columns);
@@ -49,11 +60,12 @@ int main(int argc, char *argv[]) {
     }
 
     // Calculate split sizes
-    int left_size = 10, right_size = 5;
-    float left_split[] = {0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
-    float right_split[] = {0.0, 0.0, 0.0, 0.0, 0.0};
+    float left_split[] = {0.0, 1.0, 1.0, 0.0, 2.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+    float right_split[] = {0.0, 2.0, 0.0, 0.0, 0.0};
+    int left_size = sizeof(left_split) / sizeof(left_split[0]);
+    int right_size = sizeof(right_split) / sizeof(right_split[0]);
 
-    float entropy = get_entropy(left_split, right_split, left_size, right_size);
+    float entropy = get_entropy(left_split, right_split, left_size, right_size, num_classes);
     printf("Entropy: %.6f\n", entropy);
 
     // Free memory

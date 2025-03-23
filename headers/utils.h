@@ -8,6 +8,7 @@
 // Function to read and print CSV data
 void print_matrix(float **data, int num_rows, int num_columns, int max_rows);
 void print_array(float *arr, int size, int max_elements);
-float get_entropy(float *left_split, float *right_split, int left_size, int right_size);
+float compute_entropy(float *split, int size, int num_classes);
+float get_entropy(float *left_split, float *right_split, int left_size, int right_size, int num_classes);
 
 #endif
