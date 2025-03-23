@@ -88,10 +88,47 @@ float compute_entropy(float *split, int size, int num_classes) {
 float get_entropy(float *left_split, float *right_split, int left_size, int right_size, int num_classes) {
     float left_entropy = compute_entropy(left_split, left_size, num_classes);
     float right_entropy = compute_entropy(right_split, right_size, num_classes);
+    float weighted_entropy = (left_size * left_entropy + right_size * right_entropy) / (left_size + right_size);
 
-    printf("Left entropy: %.6f\n", left_entropy);
-    printf("Right entropy: %.6f\n", right_entropy);
+    //printf("Left entropy: %.6f\n", left_entropy);
+    //printf("Right entropy: %.6f\n", right_entropy);
+    printf("Weighted entropy: %.6f\n", weighted_entropy);
     
     // Weighted entropy sum
-    return (left_size * left_entropy + right_size * right_entropy) / (left_size + right_size);
+    return weighted_entropy;
 }
+
+float* get_best_split_num_var(float *sorted_array, float *target_array, int size, int num_classes)
+    {
+        float* best_split = malloc(2 * sizeof(float));
+        best_split[0] = INFINITY;  
+        best_split[1] = 0.0;
+
+        for (int i = 0; i < size; i++)
+        {
+            float avg = (sorted_array[i] + sorted_array[i + 1]) / 2;
+            int left_size = i + 1;
+            int right_size = size - i - 1; 
+
+            float* left_split = malloc((left_size) * sizeof(float));
+            float* right_split = malloc((right_size) * sizeof(float));
+            for (int j = 0; j < left_size; j++)
+            {
+                left_split[j] = target_array[j];
+            }
+            for (int j = 0; j < right_size; j++)
+            {
+                right_split[j] = target_array[j + left_size];
+            }
+
+            float entropy = get_entropy(left_split, right_split, left_size, right_size, num_classes);
+            if (entropy < best_split[0])
+            {
+                best_split[0] = entropy;
+                best_split[1] = avg;
+            }
+            free(left_split);
+            free(right_split);
+        }
+        return best_split;
+    }

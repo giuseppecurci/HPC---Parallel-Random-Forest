@@ -42,8 +42,12 @@ int main(int argc, char *argv[]) {
         print_matrix(data, num_rows, num_columns, max_matrix_rows_print);
     }
 
+    float *target_array = malloc(num_rows * sizeof(float));
+    for (int i = 0; i < num_rows; i++) {
+        target_array[i] = data[i][20];
+    }
+
     // Extract feature column for sorting
-    printf("Getting Unsorted array\n");
     int feature_column = 1;  // Which feature to sort
     float *unsorted_array = malloc(num_rows * sizeof(float));
     for (int i = 0; i < num_rows; i++) {
@@ -60,14 +64,18 @@ int main(int argc, char *argv[]) {
     }
 
     // Calculate split sizes
-    float left_split[] = {0.0, 1.0, 1.0, 0.0, 2.0, 0.0, 0.0, 0.0, 0.0, 0.0};
-    float right_split[] = {0.0, 2.0, 0.0, 0.0, 0.0};
-    int left_size = sizeof(left_split) / sizeof(left_split[0]);
-    int right_size = sizeof(right_split) / sizeof(right_split[0]);
+    //float left_split[] = {0.0, 1.0, 1.0, 0.0, 2.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+    //float right_split[] = {0.0, 2.0, 0.0, 0.0, 0.0};
+    //int left_size = sizeof(left_split) / sizeof(left_split[0]);
+    //int right_size = sizeof(right_split) / sizeof(right_split[0]);
 
-    float entropy = get_entropy(left_split, right_split, left_size, right_size, num_classes);
-    printf("Entropy: %.6f\n", entropy);
-
+    //float entropy = get_entropy(left_split, right_split, left_size, right_size, num_classes);
+    //printf("Entropy: %.6f\n", entropy);
+    //float test_sorted_array[] = {1.0, 2.0, 3.0, 4.0, 5.0};
+    //float test_target_array[] = {0.0, 0.0, 0.0, 1.0, 1.0};
+    
+    float *best_split = get_best_split_num_var(unsorted_array, target_array, num_rows, num_classes);
+    printf("Best entropy: %.6f, Best split: %.6f\n", best_split[0], best_split[1]);
     // Free memory
     printf("Freeing memory\n");
     free(unsorted_array);
