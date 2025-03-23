@@ -4,7 +4,7 @@
 #include <float.h>
 #include "../headers/merge_sort.h"
 
-void merge(double *arr, double *temp, int left, int mid, int right) {
+void merge(float *arr, double *temp, int left, int mid, int right) {
     int i = left;      // index left subarray
     int j = mid + 1;   // index right subarray
     int k = left;      // index temp array
@@ -34,7 +34,7 @@ void merge(double *arr, double *temp, int left, int mid, int right) {
     }
 }
 
-void merge_sort_helper(double *arr, double *temp, int left, int right) {
+void merge_sort_helper(float *arr, double *temp, int left, int right) {
     if (left < right) {
         int mid = left + (right - left) / 2;
 		// avoid integer overflow
@@ -48,7 +48,7 @@ void merge_sort_helper(double *arr, double *temp, int left, int right) {
     }
 }
 
-void merge_sort(double *arr, int size) {
+void merge_sort(float *arr, int size) {
     double *temp = (double *)malloc(size * sizeof(double));
     if (temp == NULL) {
         printf("Memory allocation failed\n");
@@ -59,11 +59,4 @@ void merge_sort(double *arr, int size) {
 	// size-1 because we pass the last index of the array
     
     free(temp);
-}
-
-void print_array(double *arr, int size) {
-    for (int i = 0; i < size; i++) {
-        printf("%.6f ", arr[i]);
-    }
-    printf("\n");
 }

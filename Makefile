@@ -7,22 +7,14 @@ SOURCE = src
 
 all: final
 
-final: main.o merge_sort.o read_csv.o
+final: main.o merge_sort.o read_csv.o utils.o
 	echo "Linking and producing the final executable"
-	gcc $(FLAGS) main.o merge_sort.o read_csv.o -o final
+	$(CC) $(FLAGS) main.o merge_sort.o read_csv.o utils.o -o final 
 
-main.o: main.c 
-	echo "Compiling main.c"
-	$(CC) $(FLAGS) -c main.c 
-
-merge_sort.o: $(SOURCE)/merge_sort.c 
-	echo "Compiling merge_sort.c"
-	$(CC) $(FLAGS) -c $(SOURCE)/merge_sort.c 
-
-read_csv.o: $(SOURCE)/read_csv.c 
-	echo "Compiling read_csv.c"
-	$(CC) $(FLAGS) -c $(SOURCE)/read_csv.c 
+%.o: $(SOURCE)/%.c
+	echo "Compiling $<"
+	$(CC) $(FLAGS) -c $< -o $@
 
 clean: 
-	echo "Removing everything but the source file"
+	echo "Removing everything but the final compiled file"
 	rm *.o

@@ -4,7 +4,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-void merge_sort(double *arr, int size);
-void print_array(double *arr, int size);
+void merge_sort(float *arr, int size);
 
 #endif 
