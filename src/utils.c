@@ -56,6 +56,16 @@ void print_array(float *arr, int size, int max_elements) {
     printf("\n");
 }
 
+int argmax(int *arr, int size) {
+    int max_index = 0;
+    for (int i = 1; i < size; i++) {
+        if (arr[i] > arr[max_index]) {
+            max_index = i;
+        }
+    }
+    return max_index;
+}
+
 float compute_entropy(float *split, int size, int num_classes) {
     if (size == 0) return 0.0;  // Prevent division by zero
 
@@ -100,12 +110,17 @@ float get_entropy(float *left_split, float *right_split, int left_size, int righ
     return weighted_entropy;
 }
 
-float* get_best_split_num_var(float *sorted_array, float *target_array, int size, int num_classes)
+float* get_best_split_num_var(
+    float *sorted_array, 
+    float *target_array, 
+    int size, 
+    int num_classes)
     {
-        float* best_split = malloc(2 * sizeof(float));
+        float* best_split = malloc(6 * sizeof(float));
         best_split[0] = INFINITY;  
         best_split[1] = 0.0;
-
+        int left_class_counts[num_classes];
+        int right_class_counts[num_classes];
         for (int i = 0; i < size; i++)
         {
             float avg = (sorted_array[i] + sorted_array[i + 1]) / 2;
@@ -117,10 +132,12 @@ float* get_best_split_num_var(float *sorted_array, float *target_array, int size
             for (int j = 0; j < left_size; j++)
             {
                 left_split[j] = target_array[j];
+                left_class_counts[(int)target_array[j]]++;
             }
             for (int j = 0; j < right_size; j++)
             {
                 right_split[j] = target_array[j + left_size];
+                right_class_counts[(int)target_array[j + left_size]]++;
             }
 
             float entropy = get_entropy(left_split, right_split, left_size, right_size, num_classes);
@@ -128,17 +145,29 @@ float* get_best_split_num_var(float *sorted_array, float *target_array, int size
             {
                 best_split[0] = entropy;
                 best_split[1] = avg;
+                best_split[2] = left_size;
+                best_split[3] = right_size;
+                best_split[4] = argmax(left_class_counts, num_classes);
+                best_split[5] = argmax(right_class_counts, num_classes);
             }
+            for (int i = 0; i < 3; i++) {
+                right_class_counts[i] = 0;
+                left_class_counts[i] = 0;
+                }
             free(left_split);
             free(right_split);
         }
+
         return best_split;
     }
 
-BestSplit find_best_split(float **data, int num_rows, int num_columns, int num_classes) {
+BestSplit find_best_split(float **data, int num_rows, int num_columns, 
+                          int num_classes, int *class_pred_left, int *class_pred_right,
+                          int *best_size_left, int *best_size_right) 
+                          {
     BestSplit best_split = {INFINITY, 0.0, -1};
-
     int target_column = num_columns - 1;  // Assuming target column is the last one
+
     for (int feature_col = 0; feature_col < num_columns; feature_col++) {
         if (feature_col == target_column) continue;  // Skip target column
 
@@ -161,11 +190,14 @@ BestSplit find_best_split(float **data, int num_rows, int num_columns, int num_c
 
         // Find best split for this feature
         float *feature_best_split = get_best_split_num_var(feature_values, target_values, num_rows, num_classes);
-
         // Update the global best split if a lower entropy is found
         if (feature_best_split[0] < best_split.entropy) {
             best_split.entropy = feature_best_split[0];
             best_split.threshold = feature_best_split[1];
+            *best_size_left = feature_best_split[2];
+            *best_size_right = feature_best_split[3];
+            *class_pred_left = feature_best_split[4];
+            *class_pred_right = feature_best_split[5];
             best_split.feature_index = feature_col;
         }
 
@@ -176,4 +208,20 @@ BestSplit find_best_split(float **data, int num_rows, int num_columns, int num_c
     }
 
     return best_split;
+}
+
+void split_data(float** data, float** left_data, float** right_data, int num_rows, int target_index, float threshold) {
+    int left_index = 0;
+    int right_index = 0;
+
+    for (int i = 0; i < num_rows; i++) {
+        if (data[i][target_index] <= threshold) {
+            left_data[left_index] = data[i];
+            left_index++;
+        } else {
+            right_data[right_index] = data[i];
+            right_index++;
+        }
+    }
+    
 }
