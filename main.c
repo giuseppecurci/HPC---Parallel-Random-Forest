@@ -46,26 +46,9 @@ int main(int argc, char *argv[]) {
     //printf("Best entropy: %.6f, Best split: %.6f (Feature: %d)\n", 
     //       best_split.entropy, best_split.threshold, best_split.feature_index);
 
-    int* predictions = (int *)malloc(num_rows * sizeof(int));
-    int* targets = (int *)malloc(num_rows * sizeof(int));
-    for (int i = 0; i < num_rows; i++)
-    {
-        predictions[i] = i % num_classes;
-        targets[i] = data[i][num_columns - 1];
-    }
-    float *acc = accuracy(predictions, targets, num_rows, num_classes);
-    float **pr = precision_recall(predictions, targets, num_rows, num_classes);
-    for (int i = 0; i < num_classes; i++)
-    {
-        printf("Accuracy for class %d: %.6f\n", i, acc[i]);
-        printf("Precision for class %d: %.6f\n", i, pr[0][i]);
-        printf("Recall for class %d: %.6f\n", i, pr[1][i]);
-        printf("*********************\n");
-    }
+    //compute_metrics(predictions, targets, size, num_classes);
 
     // Free allocated memory
     for (int i = 0; i < num_rows; i++) free(data[i]);
-    free(acc);
-    for (int i = 0; i < 2; i++) free(pr[i]);
     return 0;
 }

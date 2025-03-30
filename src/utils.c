@@ -138,8 +138,9 @@ float* get_best_split_num_var(float *sorted_array, float *target_array, int size
 BestSplit find_best_split(float **data, int num_rows, int num_columns, int num_classes) {
     BestSplit best_split = {INFINITY, 0.0, -1};
 
+    int target_column = num_columns - 1;  // Assuming target column is the last one
     for (int feature_col = 0; feature_col < num_columns; feature_col++) {
-        if (feature_col == TARGET_COLUMN) continue;  // Skip target column
+        if (feature_col == target_column) continue;  // Skip target column
 
         // Allocate arrays for sorting
         float *feature_values = malloc(num_rows * sizeof(float));
@@ -152,7 +153,7 @@ BestSplit find_best_split(float **data, int num_rows, int num_columns, int num_c
         // Extract feature column and corresponding target values
         for (int i = 0; i < num_rows; i++) {
             feature_values[i] = data[i][feature_col];
-            target_values[i] = data[i][TARGET_COLUMN];
+            target_values[i] = data[i][target_column];
         }
 
         // Sort the feature and target values together
