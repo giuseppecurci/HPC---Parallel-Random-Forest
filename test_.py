@@ -1,6 +1,7 @@
 import math 
 import numpy as np 
 import pandas as pd 
+from sklearn.metrics import precision_score, recall_score, accuracy_score, confusion_matrix
 
 # Function to compute entropy for multiple classes
 def compute_entropy(split):
@@ -46,12 +47,44 @@ def find_best_split(data, target_column):
 
     return best_split_feature, best_threshold, best_entropy
 
+def compute_metrics(y_true, y_pred):
+    """
+    Computes per-class accuracy, precision, and recall.
+    
+    :param y_true: Ground truth labels (1D array)
+    :param y_pred: Predicted labels (1D array)
+    :return: Dictionary with accuracy, precision, and recall per class.
+    """
+    classes = np.unique(y_true)  # Get unique class labels
+    per_class_accuracy = {}
+    
+    for cls in classes:
+        # Per-class accuracy: Correct predictions in class / Total samples in class
+        mask = (y_true == cls)
+        per_class_accuracy[cls] = np.mean(y_pred[mask] == y_true[mask])
+    
+    precision = precision_score(y_true, y_pred, average=None, zero_division=0)
+    recall = recall_score(y_true, y_pred, average=None, zero_division=0)
+
+    return {
+        "accuracy_per_class": per_class_accuracy,
+        "precision_per_class": dict(zip(classes, precision)),
+        "recall_per_class": dict(zip(classes, recall))
+    }
+
 path_data = "/home/peppe-pooper/01_Studio/01_Unitn/3rd_semester/HPC/project/HPC---Parallel-Random-Forest/data/classification_dataset.csv"
 data = pd.read_csv(path_data)
 
+Y = data["target"]
+num_classes = len(Y.unique())
+preds = np.array([i%num_classes for i in range(data.shape[0])])
+metrics = compute_metrics(Y, preds)
+for key in metrics:
+    print(key, ":\n")
+    for cls in metrics[key]:
+        print(cls, round(metrics[key][cls],6))
 
-data = pd.read_csv(path_data)
-best_feature, best_threshold, min_entropy = find_best_split(data, target_column="target")
-print("Best feature:", best_feature)
-print("Best threshold:", best_threshold)
-print("Min entropy:", min_entropy)
+#best_feature, best_threshold, min_entropy = find_best_split(data, target_column="target")
+#print("Best feature:", best_feature)
+#print("Best threshold:", best_threshold)
+#print("Min entropy:", min_entropy)

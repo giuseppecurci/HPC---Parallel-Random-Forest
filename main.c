@@ -4,6 +4,7 @@
 #include "headers/read_csv.h"
 #include "headers/merge_sort.h"
 #include "headers/utils.h"
+#include "headers/metrics.h"
 
 int main(int argc, char *argv[]) {
     const char *filename = "data/classification_dataset.csv";  // Replace with your actual CSV file path
@@ -41,13 +42,30 @@ int main(int argc, char *argv[]) {
     }
 
     // Find the best split
-    BestSplit best_split = find_best_split(data, num_rows, num_columns, num_classes);
-    printf("Best entropy: %.6f, Best split: %.6f (Feature: %d)\n", 
-           best_split.entropy, best_split.threshold, best_split.feature_index);
+    //BestSplit best_split = find_best_split(data, num_rows, num_columns, num_classes);
+    //printf("Best entropy: %.6f, Best split: %.6f (Feature: %d)\n", 
+    //       best_split.entropy, best_split.threshold, best_split.feature_index);
+
+    int* predictions = (int *)malloc(num_rows * sizeof(int));
+    int* targets = (int *)malloc(num_rows * sizeof(int));
+    for (int i = 0; i < num_rows; i++)
+    {
+        predictions[i] = i % num_classes;
+        targets[i] = data[i][num_columns - 1];
+    }
+    float *acc = accuracy(predictions, targets, num_rows, num_classes);
+    float **pr = precision_recall(predictions, targets, num_rows, num_classes);
+    for (int i = 0; i < num_classes; i++)
+    {
+        printf("Accuracy for class %d: %.6f\n", i, acc[i]);
+        printf("Precision for class %d: %.6f\n", i, pr[0][i]);
+        printf("Recall for class %d: %.6f\n", i, pr[1][i]);
+        printf("*********************\n");
+    }
 
     // Free allocated memory
     for (int i = 0; i < num_rows; i++) free(data[i]);
-    free(data);
-
+    free(acc);
+    for (int i = 0; i < 2; i++) free(pr[i]);
     return 0;
 }
