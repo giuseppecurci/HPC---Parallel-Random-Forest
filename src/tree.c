@@ -34,6 +34,7 @@ void grow_tree(Node *parent, float **data, int num_columns, int num_classes) {
     BestSplit best_split = find_best_split(data, parent->num_samples, num_columns, num_classes, 
                                            best_size_left, best_size_right, best_class_pred_left, best_class_pred_right);
     printf("Best size left: %d, Best size right: %d\n", *best_size_left, *best_size_right);
+    printf("Best class pred left: %d, Best class pred right: %d\n", *best_class_pred_left, *best_class_pred_right);
     printf("Best entropy: %.6f, Best split: %.6f (Feature: %d)\n", 
            best_split.entropy, best_split.threshold, best_split.feature_index);
     if (best_split.entropy > parent->entropy){
@@ -48,7 +49,7 @@ void grow_tree(Node *parent, float **data, int num_columns, int num_classes) {
     parent->feature = best_split.feature_index;
     parent->threshold = best_split.threshold;
     parent->entropy = best_split.entropy;
-    get_class_pred(data, parent->num_samples, num_columns, num_classes, parent);
+    // get_class_pred(data, parent->num_samples, num_columns, num_classes, parent);
     parent->left = create_node(-1, -1, NULL, NULL, *best_class_pred_left, parent->depth + 1, INFINITY, *best_size_left);
     parent->right = create_node(-1, -1, NULL, NULL, *best_class_pred_right, parent->depth + 1, INFINITY, *best_size_right);
     printf("Created children and populated parent\n");
@@ -88,7 +89,7 @@ void grow_tree(Node *parent, float **data, int num_columns, int num_classes) {
 };
 
 void train_tree(Tree *tree, float **data, int num_rows, int num_columns, int num_classes) {
-    tree->root = create_node(-1, -1000, NULL, NULL, -1, 0, 100000, num_rows);
+    tree->root = create_node(-1, -1000, NULL, NULL, -1, 0, 1000, num_rows);
     printf("Starting tree training\n");
     printf("Number of rows: %d\n", num_rows);
     printf("Number of columns: %d\n", num_columns);

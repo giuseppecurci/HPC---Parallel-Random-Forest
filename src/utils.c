@@ -1,6 +1,7 @@
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "../headers/utils.h"
 #include "../headers/read_csv.h"
 #include "../headers/merge_sort.h"
@@ -119,8 +120,13 @@ float* get_best_split_num_var(
         float* best_split = malloc(6 * sizeof(float));
         best_split[0] = INFINITY;  
         best_split[1] = 0.0;
+        best_split[2] = best_split[3] = best_split[4] = best_split[5] = -1;
+
         int left_class_counts[num_classes];
         int right_class_counts[num_classes];
+        memset(left_class_counts, 0, num_classes * sizeof(int));
+        memset(right_class_counts, 0, num_classes * sizeof(int));
+        
         for (int i = 0; i < size; i++)
         {
             float avg = (sorted_array[i] + sorted_array[i + 1]) / 2;
@@ -150,9 +156,9 @@ float* get_best_split_num_var(
                 best_split[4] = argmax(left_class_counts, num_classes);
                 best_split[5] = argmax(right_class_counts, num_classes);
             }
-            for (int i = 0; i < 3; i++) {
-                right_class_counts[i] = 0;
-                left_class_counts[i] = 0;
+            for (int j = 0; j < num_classes; j++) {
+                right_class_counts[j] = 0;
+                left_class_counts[j] = 0;
                 }
             free(left_split);
             free(right_split);
@@ -194,10 +200,10 @@ BestSplit find_best_split(float **data, int num_rows, int num_columns,
         if (feature_best_split[0] < best_split.entropy) {
             best_split.entropy = feature_best_split[0];
             best_split.threshold = feature_best_split[1];
-            *best_size_left = feature_best_split[2];
-            *best_size_right = feature_best_split[3];
-            *class_pred_left = feature_best_split[4];
-            *class_pred_right = feature_best_split[5];
+            *best_size_left = (int) feature_best_split[2];
+            *best_size_right = (int) feature_best_split[3];
+            *class_pred_left = (int) feature_best_split[4];
+            *class_pred_right = (int) feature_best_split[5];
             best_split.feature_index = feature_col;
         }
 
