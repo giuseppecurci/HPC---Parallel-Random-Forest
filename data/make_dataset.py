@@ -30,8 +30,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Generate a classification dataset and save it as CSV.")
     parser.add_argument("--samples", type=int, required=True, help="Number of samples")
     parser.add_argument("--features", type=int, required=True, help="Number of features")
-    parser.add_argument("--inf_features", type=int, required=False, default=3, help="Number of features")
-    parser.add_argument("--classes", type=int, required=True, help="Number of classes")
+    parser.add_argument("--inf_features", type=int, required=False, default=3, help="Number of informative features")
+    parser.add_argument("--classes", type=int, required=True, default=2, help="Number of classes")
     
     args = parser.parse_args()
     generate_dataset(args.samples, args.features, args.inf_features, args.classes)

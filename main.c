@@ -5,6 +5,7 @@
 #include "headers/merge_sort.h"
 #include "headers/utils.h"
 #include "headers/metrics.h"
+#include "headers/tree.h"
 
 int main(int argc, char *argv[]) {
     const char *filename = "data/classification_dataset.csv";  // Replace with your actual CSV file path
@@ -40,6 +41,11 @@ int main(int argc, char *argv[]) {
     if (max_matrix_rows_print != 0) {  // Only print if not explicitly disabled (0 rows)
         print_matrix(data, num_rows, num_columns, max_matrix_rows_print);
     }
+
+    Tree *random_tree = (Tree *)malloc(sizeof(Tree));
+    train_tree(random_tree, data, num_rows, num_columns, num_classes);
+    print_tree(random_tree);
+    destroy_tree(random_tree);
 
     // Find the best split
     //BestSplit best_split = find_best_split(data, num_rows, num_columns, num_classes);
