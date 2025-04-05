@@ -1,20 +1,27 @@
-# Compiler
-# Compiler to use (change to 'clang' or other if necessary)
-CC = gcc 
+# === CONFIG ===
+CC = gcc
 FLAGS = -g -Wall -Wextra
 HEADERS = headers
 SOURCE = src
+EXEC = final
 
-all: final
+# === FIND ALL .c FILES RECURSIVELY ===
+SRC_FILES := $(shell find $(SOURCE) -name '*.c')
+OBJ_FILES := $(patsubst %.c,%.o,$(SRC_FILES))
 
-final: main.o merge_sort.o read_csv.o utils.o metrics.o
+# === RULES ===
+all: $(EXEC)
+
+$(EXEC): main.o $(OBJ_FILES)
 	echo "Linking and producing the final executable"
-	$(CC) $(FLAGS) main.o merge_sort.o read_csv.o utils.o metrics.o -o final -lm
+	$(CC) $(FLAGS) $^ -o $@ -lm
 
-%.o: $(SOURCE)/%.c
+# Compile each .c to .o, keeping folder structure
+%.o: %.c
 	echo "Compiling $<"
-	$(CC) $(FLAGS) -c $< -o $@
+	$(CC) $(FLAGS) -I$(HEADERS) -I$(HEADERS)/tree -c $< -o $@
 
-clean: 
-	echo "Removing everything but the final compiled file"
-	rm *.o
+clean:
+	echo "Cleaning up object files"
+	find . -name '*.o' -delete
+	# Do not remove the final executable

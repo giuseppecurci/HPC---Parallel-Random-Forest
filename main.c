@@ -2,14 +2,18 @@
 #include <stdlib.h>
 #include <string.h>
 #include "headers/read_csv.h"
-#include "headers/merge_sort.h"
 #include "headers/utils.h"
 #include "headers/metrics.h"
+
+#include "headers/merge_sort.h"
+#include "headers/tree/tree.h"
+#include "headers/tree/utils.h"
+#include "headers/tree/train_utils.h"
 
 int main(int argc, char *argv[]) {
     const char *filename = "data/classification_dataset.csv";  // Replace with your actual CSV file path
     int num_rows, num_columns;
-    int max_matrix_rows_print = 0, max_array_elements_print = 0;  // Default: print nothing
+    int max_matrix_rows_print = 0; // Default: print nothing
     int num_classes = 0;
 
     // Parse command-line arguments
@@ -41,31 +45,25 @@ int main(int argc, char *argv[]) {
         print_matrix(data, num_rows, num_columns, max_matrix_rows_print);
     }
 
-    // Find the best split
-    //BestSplit best_split = find_best_split(data, num_rows, num_columns, num_classes);
-    //printf("Best entropy: %.6f, Best split: %.6f (Feature: %d)\n", 
-    //       best_split.entropy, best_split.threshold, best_split.feature_index);
-
-    int* predictions = (int *)malloc(num_rows * sizeof(int));
-    int* targets = (int *)malloc(num_rows * sizeof(int));
-    for (int i = 0; i < num_rows; i++)
-    {
-        predictions[i] = i % num_classes;
-        targets[i] = data[i][num_columns - 1];
+    //Tree *random_tree = (Tree *)malloc(sizeof(Tree));
+    //train_tree(random_tree, data, num_rows, num_columns, num_classes);
+    Tree *random_tree = deserialize_tree("random_tree.bin");
+    int *predictions;
+    int *targets = malloc(num_rows * sizeof(int));
+    printf("Getting targets\n");
+    for (int i = 0; i < num_rows; i++) {
+        targets[i] = (int)data[i][num_columns - 1];
     }
-    float *acc = accuracy(predictions, targets, num_rows, num_classes);
-    float **pr = precision_recall(predictions, targets, num_rows, num_classes);
-    for (int i = 0; i < num_classes; i++)
-    {
-        printf("Accuracy for class %d: %.6f\n", i, acc[i]);
-        printf("Precision for class %d: %.6f\n", i, pr[0][i]);
-        printf("Recall for class %d: %.6f\n", i, pr[1][i]);
-        printf("*********************\n");
-    }
-
+    printf("Starting inference:\n");
+    predictions = tree_inference(random_tree, data, num_rows);
+    save_predictions(predictions, num_rows, "predictions.csv");
+    printf("Inference completed\n");
+    compute_metrics(predictions, targets, num_rows, num_classes);
+    serialize_tree(random_tree, "random_tree.bin");
+    destroy_tree(random_tree);
     // Free allocated memory
     for (int i = 0; i < num_rows; i++) free(data[i]);
-    free(acc);
-    for (int i = 0; i < 2; i++) free(pr[i]);
+    free(predictions);
+    free(targets);
     return 0;
 }

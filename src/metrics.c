@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <stdio.h>
 #include "../headers/metrics.h"
 
 float* accuracy(int *predictions, int *targets, int size, int num_classes)
@@ -56,4 +57,28 @@ float** precision_recall(int *predictions, int *targets, int size, int num_class
     free(positives);
 
     return metrics;
+}
+
+void compute_metrics(int *predictions, int *targets, int size, int num_classes)
+{
+    float *acc = accuracy(predictions, targets, size, num_classes);
+    float **pr = precision_recall(predictions, targets, size, num_classes);
+
+    FILE *metrics_doc = fopen("metrics_output.txt", "w");
+    if (metrics_doc == NULL) {
+        printf("Error opening file for writing\n");
+        return;
+    }
+
+    for (int i = 0; i < num_classes; i++)
+    {
+        fprintf(metrics_doc, "Accuracy for class %d: %.6f\n", i, acc[i]);
+        fprintf(metrics_doc, "Precision for class %d: %.6f\n", i, pr[0][i]);
+        fprintf(metrics_doc, "Recall for class %d: %.6f\n", i, pr[1][i]);
+        fprintf(metrics_doc, "*********************\n");
+    }
+
+    free(acc);
+    for (int i = 0; i < 2; i++) free(pr[i]);
+    fclose(metrics_doc);
 }

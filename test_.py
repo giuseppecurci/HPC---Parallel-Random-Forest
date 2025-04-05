@@ -73,11 +73,15 @@ def compute_metrics(y_true, y_pred):
     }
 
 path_data = "/home/peppe-pooper/01_Studio/01_Unitn/3rd_semester/HPC/project/HPC---Parallel-Random-Forest/data/classification_dataset.csv"
+path_pred = "/home/peppe-pooper/01_Studio/01_Unitn/3rd_semester/HPC/project/HPC---Parallel-Random-Forest/predictions.csv"
 data = pd.read_csv(path_data)
+preds = pd.read_csv(path_pred)
+
 
 Y = data["target"]
 num_classes = len(Y.unique())
-preds = np.array([i%num_classes for i in range(data.shape[0])])
+preds = preds["Predictions"].values
+# preds = np.array([i%num_classes for i in range(data.shape[0])])
 metrics = compute_metrics(Y, preds)
 for key in metrics:
     print(key, ":\n")
