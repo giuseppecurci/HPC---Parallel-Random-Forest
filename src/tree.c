@@ -17,11 +17,8 @@ Node *create_node(int feature, float threshold, Node *left, Node *right, int pre
 
 void grow_tree(Node *parent, float **data, int num_columns, int num_classes) {
     if (parent->num_samples < MIN_SAMPLES_SPLIT || parent->depth >= MAX_DEPTH) {
-        printf("Num samples: %d, Depth: %d\n", parent->num_samples, parent->depth);
-        printf("Reached max depth or minimum samples\n");
         return;
     }
-    printf("Intialized best split variables\n");
     int *best_size_left = (int *)malloc(sizeof(int));
     *best_size_left = 0;
     int *best_size_right = (int *)malloc(sizeof(int));
@@ -30,15 +27,9 @@ void grow_tree(Node *parent, float **data, int num_columns, int num_classes) {
     *best_class_pred_left = -1;
     int *best_class_pred_right = (int *)malloc(sizeof(int));
     *best_class_pred_right = -1;
-    printf("Finding best split\n");
     BestSplit best_split = find_best_split(data, parent->num_samples, num_columns, num_classes, 
-                                           best_size_left, best_size_right, best_class_pred_left, best_class_pred_right);
-    printf("Best size left: %d, Best size right: %d\n", *best_size_left, *best_size_right);
-    printf("Best class pred left: %d, Best class pred right: %d\n", *best_class_pred_left, *best_class_pred_right);
-    printf("Best entropy: %.6f, Best split: %.6f (Feature: %d)\n", 
-           best_split.entropy, best_split.threshold, best_split.feature_index);
+                                           best_class_pred_left, best_class_pred_right, best_size_left, best_size_right);
     if (best_split.entropy > parent->entropy){
-        printf("Entropy is higher than parent\n");
         free(best_size_left);
         free(best_size_right);
         free(best_class_pred_left);
@@ -52,10 +43,6 @@ void grow_tree(Node *parent, float **data, int num_columns, int num_classes) {
     // get_class_pred(data, parent->num_samples, num_columns, num_classes, parent);
     parent->left = create_node(-1, -1, NULL, NULL, *best_class_pred_left, parent->depth + 1, INFINITY, *best_size_left);
     parent->right = create_node(-1, -1, NULL, NULL, *best_class_pred_right, parent->depth + 1, INFINITY, *best_size_right);
-    printf("Created children and populated parent\n");
-    print_node(parent->left);
-    print_node(parent->right);
-    printf("Splitting data\n");
     float** left_data = (float **)malloc(*best_size_left * sizeof(float *));
     float** right_data = (float **)malloc(*best_size_right * sizeof(float *));
     for (int i = 0; i < *best_size_left; i++) {
@@ -66,21 +53,12 @@ void grow_tree(Node *parent, float **data, int num_columns, int num_classes) {
     }
 
     split_data(data, left_data, right_data, parent->num_samples, best_split.feature_index, best_split.threshold);
-    printf("Data split\n");
     
-    printf("Growing left\n");
     grow_tree(parent->left, left_data, num_columns, num_classes);
-    //for (int i = 0; i < *best_size_left; i++) {
-    //    free(left_data[i]);
-    //}
-    //free(left_data);
+    free(left_data);
     
-    printf("Growing right\n");
     grow_tree(parent->right, right_data, num_columns, num_classes);
-    //for (int i = 0; i < *best_size_right; i++) {
-    //    free(right_data[i]);
-    //}
-    //free(right_data);
+    free(right_data);
 
     free(best_size_left);
     free(best_size_right);
@@ -129,3 +107,19 @@ void print_node(Node *node) {
     print_node(node->left);
     print_node(node->right);
 };
+
+int* tree_inference(Tree *tree, float **data, int num_rows) {
+    int *predictions = (int *)malloc(num_rows * sizeof(int));
+    for (int i = 0; i < num_rows; i++) {
+        Node *current_node = tree->root;
+        while (current_node->left != NULL && current_node->right != NULL) {
+            if (data[i][current_node->feature] <= current_node->threshold) {
+                current_node = current_node->left;
+            } else {
+                current_node = current_node->right;
+            }
+        }
+        predictions[i] = current_node->pred;
+    }
+    return predictions;
+}

@@ -4,7 +4,7 @@
 #include "utils.h"
 
 #define MAX_DEPTH 100
-#define MIN_SAMPLES_SPLIT 10
+#define MIN_SAMPLES_SPLIT 50
 
 // Node structure for the decision tree
 typedef struct Node {
@@ -32,6 +32,9 @@ void grow_tree(Node *parent, float **data, int num_columns, int num_classes);
 
 // Function to train the decision tree
 void train_tree(Tree *tree, float **data, int num_rows, int num_columns, int num_classes);
+
+// Function to perform inference on the data using the trained tree
+int* tree_inference(Tree *tree, float **data, int num_rows);
 
 // Function to get the predicted class for a node
 void get_class_pred(float** data, int num_rows, int num_columns, int num_classes, Node *node);

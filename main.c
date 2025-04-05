@@ -44,16 +44,17 @@ int main(int argc, char *argv[]) {
 
     Tree *random_tree = (Tree *)malloc(sizeof(Tree));
     train_tree(random_tree, data, num_rows, num_columns, num_classes);
-    print_tree(random_tree);
+    //print_tree(random_tree);
+    int *predictions;
+    int *targets = malloc(num_rows * sizeof(int));
+    printf("Getting targets\n");
+    for (int i = 0; i < num_rows; i++) {
+        targets[i] = (int)data[i][num_columns - 1];
+    }
+    printf("Starting inference:\n");
+    predictions = tree_inference(random_tree, data, num_rows);
+    compute_metrics(predictions, targets, num_rows, num_classes);
     destroy_tree(random_tree);
-
-    // Find the best split
-    //BestSplit best_split = find_best_split(data, num_rows, num_columns, num_classes);
-    //printf("Best entropy: %.6f, Best split: %.6f (Feature: %d)\n", 
-    //       best_split.entropy, best_split.threshold, best_split.feature_index);
-
-    //compute_metrics(predictions, targets, size, num_classes);
-
     // Free allocated memory
     for (int i = 0; i < num_rows; i++) free(data[i]);
     return 0;
