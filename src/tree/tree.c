@@ -1,6 +1,8 @@
-#include "../headers/tree.h"
 #include <stdlib.h>
 #include <stdio.h>
+#include <math.h>
+#include "tree.h"
+#include "train_utils.h"
 
 Node *create_node(int feature, float threshold, Node *left, Node *right, int pred, int depth, float entropy, int num_samples) {
     Node *node = (Node *)malloc(sizeof(Node));
@@ -40,7 +42,6 @@ void grow_tree(Node *parent, float **data, int num_columns, int num_classes) {
     parent->feature = best_split.feature_index;
     parent->threshold = best_split.threshold;
     parent->entropy = best_split.entropy;
-    // get_class_pred(data, parent->num_samples, num_columns, num_classes, parent);
     parent->left = create_node(-1, -1, NULL, NULL, *best_class_pred_left, parent->depth + 1, INFINITY, *best_size_left);
     parent->right = create_node(-1, -1, NULL, NULL, *best_class_pred_right, parent->depth + 1, INFINITY, *best_size_right);
     float** left_data = (float **)malloc(*best_size_left * sizeof(float *));
@@ -74,38 +75,6 @@ void train_tree(Tree *tree, float **data, int num_rows, int num_columns, int num
     printf("Number of classes: %d\n", num_classes);
     grow_tree(tree->root, data, num_columns, num_classes);
     printf("Tree trained\n");
-};
-
-void get_class_pred(float** data, int num_rows, int num_columns, int num_classes, Node *node) {
-    int classes_count[num_classes];
-    for (int i = 0; i < num_rows; i++) {
-        classes_count[(int)data[i][num_columns - 1]]++;
-    }
-    node->pred = argmax(classes_count, 3);
-}
-
-void destroy_tree(Tree *tree) {
-    destroy_node(tree->root);
-    free(tree);
-};
-
-void destroy_node(Node *node) {
-    if (node == NULL) return;
-    destroy_node(node->left);
-    destroy_node(node->right);
-    free(node);
-};
-
-void print_tree(Tree *tree) {
-    printf("Printing tree\n");
-    print_node(tree->root);
-};
-
-void print_node(Node *node) {
-    if (node == NULL) return;
-    printf("Feature: %d, Threshold: %.6f, Value: %d, Num samples: %d\n", node->feature, node->threshold, node->pred, node->num_samples);
-    print_node(node->left);
-    print_node(node->right);
 };
 
 int* tree_inference(Tree *tree, float **data, int num_rows) {

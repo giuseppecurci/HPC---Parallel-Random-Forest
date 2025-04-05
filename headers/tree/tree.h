@@ -1,10 +1,8 @@
 #ifndef TREE_H
 #define TREE_H
 
-#include "utils.h"
-
 #define MAX_DEPTH 100
-#define MIN_SAMPLES_SPLIT 50
+#define MIN_SAMPLES_SPLIT 15
 
 // Node structure for the decision tree
 typedef struct Node {
@@ -35,20 +33,5 @@ void train_tree(Tree *tree, float **data, int num_rows, int num_columns, int num
 
 // Function to perform inference on the data using the trained tree
 int* tree_inference(Tree *tree, float **data, int num_rows);
-
-// Function to get the predicted class for a node
-void get_class_pred(float** data, int num_rows, int num_columns, int num_classes, Node *node);
-
-// Function to destroy the tree and free allocated memory
-void destroy_tree(Tree *tree);
-
-// Function to recursively destroy nodes in the tree
-void destroy_node(Node *node);
-
-// Function to print the tree (for debugging purposes)
-void print_tree(Tree *tree);
-
-// Function to recursively print nodes in the tree
-void print_node(Node *node);
 
 #endif 
