@@ -1,3 +1,12 @@
+/**
+ * @file tree.c
+ * @brief Implementation of decision tree training, growing, and inference functions.
+ *
+ * This file contains functions to build and train a decision tree using recursive
+ * splitting based on feature values. It includes functions for node creation,
+ * growing the tree, training the tree, and performing inference on new data.
+ */
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
@@ -39,26 +48,22 @@ void grow_tree(Node *parent, float **data, int num_columns, int num_classes) {
         return;
     }
     
+    float** left_data = (float **)malloc(*best_size_left * sizeof(float *));
+    float** right_data = (float **)malloc(*best_size_right * sizeof(float *));
+
+    split_data(data, left_data, right_data, parent->num_samples, num_columns, best_split.feature_index, best_split.threshold);
+    
     parent->feature = best_split.feature_index;
     parent->threshold = best_split.threshold;
     parent->entropy = best_split.entropy;
     parent->left = create_node(-1, -1, NULL, NULL, *best_class_pred_left, parent->depth + 1, INFINITY, *best_size_left);
     parent->right = create_node(-1, -1, NULL, NULL, *best_class_pred_right, parent->depth + 1, INFINITY, *best_size_right);
-    float** left_data = (float **)malloc(*best_size_left * sizeof(float *));
-    float** right_data = (float **)malloc(*best_size_right * sizeof(float *));
-    for (int i = 0; i < *best_size_left; i++) {
-        left_data[i] = (float *)malloc(num_columns * sizeof(float));
-    }
-    for (int i = 0; i < *best_size_right; i++) {
-        right_data[i] = (float *)malloc(num_columns * sizeof(float));
-    }
 
-    split_data(data, left_data, right_data, parent->num_samples, best_split.feature_index, best_split.threshold);
-    
     grow_tree(parent->left, left_data, num_columns, num_classes);
-    free(left_data);
-    
     grow_tree(parent->right, right_data, num_columns, num_classes);
+    for (int i = 0; i < *best_size_left; i++) free(left_data[i]);
+    free(left_data);
+    for (int i = 0; i < *best_size_right; i++) free(right_data[i]);
     free(right_data);
 
     free(best_size_left);
