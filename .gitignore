@@ -58,3 +58,6 @@ final
 metrics_output.txt
 /predictions.csv
 random_tree.bin
+Doxyfile 
+latex/
+html/
