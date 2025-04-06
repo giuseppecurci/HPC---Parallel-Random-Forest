@@ -19,6 +19,8 @@ float* accuracy(int *predictions, int *targets, int size, int num_classes)
     {
         accuracy[i] = (float)correct[i] / total[i];
     }
+    free(correct);
+    free(total);
     return accuracy;
 }
 
@@ -80,5 +82,6 @@ void compute_metrics(int *predictions, int *targets, int size, int num_classes)
 
     free(acc);
     for (int i = 0; i < 2; i++) free(pr[i]);
+    free(pr);
     fclose(metrics_doc);
 }

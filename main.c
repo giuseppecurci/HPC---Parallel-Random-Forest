@@ -1,17 +1,33 @@
+/**
+ * @file main.c
+ * @brief Main program for training a decision tree on a classification dataset and evaluating its performance.
+ *
+ * This file provides the main function that:
+ * - Parses command-line arguments.
+ * - Loads a dataset from a CSV file.
+ * - Trains a decision tree classifier using the loaded dataset.
+ * - Makes predictions using the trained tree.
+ * - Computes and saves performance metrics such as accuracy, precision, and recall.
+ * - Serializes the trained tree for future use.
+ *
+ * The program can be run with the following command-line arguments:
+ * - `--print_matrix <num_rows>`: Print the first `num_rows` rows of the dataset.
+ * - `--num_classes <num_classes>`: Specify the number of classes in the dataset.
+ *
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "headers/read_csv.h"
 #include "headers/utils.h"
 #include "headers/metrics.h"
 
-#include "headers/merge_sort.h"
 #include "headers/tree/tree.h"
 #include "headers/tree/utils.h"
 #include "headers/tree/train_utils.h"
 
 int main(int argc, char *argv[]) {
-    const char *filename = "data/classification_dataset.csv";  // Replace with your actual CSV file path
+    const char *filename = "data/classification_dataset.csv";  
     int num_rows, num_columns;
     int max_matrix_rows_print = 0; // Default: print nothing
     int num_classes = 0;
@@ -33,23 +49,22 @@ int main(int argc, char *argv[]) {
 
     printf("Number of classes: %d\n", num_classes);
 
-    // Call read_csv to get the matrix
     float **data = read_csv(filename, &num_rows, &num_columns);
     if (data == NULL) {
-        return 1;  // If there was an error reading the file
+        return 1;  
     }
     printf("Loaded data\n");
 
     // Optionally, print the matrix
-    if (max_matrix_rows_print != 0) {  // Only print if not explicitly disabled (0 rows)
+    if (max_matrix_rows_print != 0) {  
         print_matrix(data, num_rows, num_columns, max_matrix_rows_print);
     }
 
-    //Tree *random_tree = (Tree *)malloc(sizeof(Tree));
-    //train_tree(random_tree, data, num_rows, num_columns, num_classes);
-    Tree *random_tree = deserialize_tree("random_tree.bin");
+    Tree *random_tree = (Tree *)malloc(sizeof(Tree));
+    train_tree(random_tree, data, num_rows, num_columns, num_classes);
+    //Tree *random_tree = deserialize_tree("random_tree.bin");
     int *predictions;
-    int *targets = malloc(num_rows * sizeof(int));
+    int* targets = (int *)malloc(num_rows * sizeof(int));
     printf("Getting targets\n");
     for (int i = 0; i < num_rows; i++) {
         targets[i] = (int)data[i][num_columns - 1];
@@ -61,9 +76,12 @@ int main(int argc, char *argv[]) {
     compute_metrics(predictions, targets, num_rows, num_classes);
     serialize_tree(random_tree, "random_tree.bin");
     destroy_tree(random_tree);
+    
     // Free allocated memory
-    for (int i = 0; i < num_rows; i++) free(data[i]);
+    for (int i = 0; i < MAX_ROWS; i++) free(data[i]);
+    free(data);
     free(predictions);
     free(targets);
+    printf("Memory freed\n");
     return 0;
 }
