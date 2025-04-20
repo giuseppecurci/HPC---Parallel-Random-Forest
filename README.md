@@ -1,6 +1,10 @@
 # HPC---Parallel-Random-Forest
 A parallel implementation of Random Forest (multithread/multinode).
 
+<p align="center">
+  <img src="pics/digital_forest.png" width="800" height="300">  
+</p>
+
 ## How it works
 
 1. Create a dataset
