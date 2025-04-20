@@ -64,12 +64,7 @@ void grow_tree(Node *parent, float **data, int num_columns, int num_classes) {
 
 void train_tree(Tree *tree, float **data, int num_rows, int num_columns, int num_classes) {
     tree->root = create_node(-1, -1000, NULL, NULL, -1, 0, 1000, num_rows);
-    printf("Starting tree training\n");
-    printf("Number of rows: %d\n", num_rows);
-    printf("Number of columns: %d\n", num_columns);
-    printf("Number of classes: %d\n", num_classes);
     grow_tree(tree->root, data, num_columns, num_classes);
-    printf("Tree trained\n");
 };
 
 int* tree_inference(Tree *tree, float **data, int num_rows) {

@@ -21,7 +21,6 @@
 //Max number of characters that can be stored in the buffer line
 #define MAX_LINE 1024
 #define MAX_ROWS 20000000
-#define SEED 0
 
 /**
  * @brief Prints a matrix with specified number of rows and columns.
@@ -74,9 +73,10 @@ float** read_csv(const char *filename, int *num_rows, int *num_columns);
  * @param train_size Output parameter that will store the size of the training data matrix.
  * @param test_data Output parameter that will store the testing data matrix.
  * @param test_size Output parameter that will store the size of the testing data matrix.
+ * @param seed Random seed for reproducibility.
  */
 void stratified_split(float **data, int num_rows, int num_columns, float train_proportion,
-                      float ***train_data, int *train_size, float ***test_data, int *test_size);
+                      float ***train_data, int *train_size, float ***test_data, int *test_size, int seed);
 
 /**
  * @brief Parses command-line arguments for various options.
@@ -91,8 +91,29 @@ void stratified_split(float **data, int num_rows, int num_columns, float train_p
  * @param new_tree_path Path for the new tree to train and then serialize (--new_tree_path).
  * @param dataset_path Path for the dataset to be used (--dataset_path).
  * @param train_proportion Proportion of data to be used for training (--train_proportion).
+ * @param seed Random seed for reproducibility (--seed).
  */
 int parse_arguments(int argc, char *argv[], int *max_matrix_rows_print, int *num_classes,
                     char **trained_tree_path, char **store_predictions_path, char **store_metrics_path,
-                    char **new_tree_path, char **dataset_path, float *train_proportion);
+                    char **new_tree_path, char **dataset_path, float *train_proportion, int *seed);
+
+/**
+ * @brief Prints config used for a run.
+ * 
+ * This function prints the configuration used for the run and the various paths used to store results.
+ * 
+ * @param dataset_path Path to the dataset.
+ * @param train_proportion Proportion of data used for training.
+ * @param train_size Size of the training data.
+ * @param num_columns Number of columns in the dataset.
+ * @param num_classes Number of classes in the dataset.
+ * @param store_predictions_path Path to store predictions.
+ * @param store_metrics_path Path to store performance metrics.
+ * @param new_tree_path Path for the new tree.
+ * @param trained_tree_path Path for the trained tree.
+ * @param seed Random seed used for the run.
+ */
+void summary(char* dataset_path, float train_proportion, int train_size, int num_columns,
+             int num_classes, char* store_predictions_path, char* store_metrics_path,
+             char* new_tree_path, char* trained_tree_path, int seed);
 #endif

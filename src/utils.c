@@ -55,6 +55,26 @@ void print_array(float *arr, int size, int max_elements) {
     printf("\n");
 }
 
+void summary(char* dataset_path, float train_proportion, int train_size, int num_columns,
+             int num_classes, char* store_predictions_path, char* store_metrics_path,
+             char* new_tree_path, char* trained_tree_path, int seed) {
+        printf("Summary setup:\n");
+        printf(" - Dataset: %s\n", dataset_path);
+        printf(" - Train/test size: %.2f/%.2f\n", train_proportion, 1-train_proportion);
+        printf(" - Training samples: %d\n", train_size);
+        printf(" - Number of features: %d\n", num_columns);
+        printf(" - Number of classes: %d\n", num_classes);
+        printf(" - Predictions path: %s\n", store_predictions_path);
+        printf(" - Metrics path: %s\n", store_metrics_path);
+        if (trained_tree_path != NULL) {
+            printf(" - Trained Tree path: %s\n", trained_tree_path);
+        } else {
+            printf(" - New Tree path: %s\n", new_tree_path);
+        }
+        printf(" - Seed: %d\n", seed);
+        printf("--------------\n");
+    };
+
 // Function to read CSV and return the data matrix
 float** read_csv(const char *filename, int *num_rows, int *num_columns) {
     FILE *file = fopen(filename, "r");
@@ -112,7 +132,7 @@ float** read_csv(const char *filename, int *num_rows, int *num_columns) {
 
 int parse_arguments(int argc, char *argv[], int *max_matrix_rows_print, int *num_classes,
                     char **trained_tree_path, char **store_predictions_path, char **store_metrics_path,
-                    char **new_tree_path, char **dataset_path, float *train_proportion) {
+                    char **new_tree_path, char **dataset_path, float *train_proportion, int *seed) {
 
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--print_matrix") == 0 && i + 1 < argc) {
@@ -136,6 +156,9 @@ int parse_arguments(int argc, char *argv[], int *max_matrix_rows_print, int *num
         else if (strcmp(argv[i], "--dataset_path") == 0 && i + 1 < argc) {
             *dataset_path = argv[i + 1]; 
         }
+        else if (strcmp(argv[i], "--seed") == 0 && i + 1 < argc) {
+            *seed = atoi(argv[i + 1]); 
+        }
         else if (strcmp(argv[i], "--train_proportion") == 0 && i + 1 < argc) {
             *train_proportion = atof(argv[i + 1]);
             if (*train_proportion <= 0 || *train_proportion >= 1) {
@@ -149,7 +172,7 @@ int parse_arguments(int argc, char *argv[], int *max_matrix_rows_print, int *num
 }
 
 void stratified_split(float **data, int num_rows, int num_columns, float train_proportion,
-                      float ***train_data, int *train_size, float ***test_data, int *test_size) {
+                      float ***train_data, int *train_size, float ***test_data, int *test_size, int seed) {
     // The last column is the target, so we need to extract it
     int target_index = num_columns - 1;
 
@@ -177,7 +200,7 @@ void stratified_split(float **data, int num_rows, int num_columns, float train_p
     }
 
     // Seed the random number generator
-    srand(SEED);
+    srand(seed);
 
     // Shuffle the indices to randomize the order
     for (int i = num_rows - 1; i > 0; i--) {
