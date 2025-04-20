@@ -2,7 +2,7 @@
 A parallel implementation of Random Forest (multithread/multinode).
 
 <p align="center">
-  <img src="pics/digital_forest.png" width="800" height="300">  
+  <img src="pics/digital_forest.png" width="600" height="300">  
 </p>
 
 ## How it works
