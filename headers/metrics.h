@@ -59,7 +59,8 @@ float** precision_recall(int *predictions, int *targets, int size, int num_class
  * @param targets Array of true class labels.
  * @param size The total number of predictions/targets.
  * @param num_classes The number of unique classes.
+ * @param metrics_path The path to the .txt file where the metrics will be saved. 
  */
-void compute_metrics(int *predictions, int *targets, int size, int num_classes);
+void compute_metrics(int *predictions, int *targets, int size, int num_classes, char* metrics_path);
 
 #endif

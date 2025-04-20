@@ -61,12 +61,12 @@ float** precision_recall(int *predictions, int *targets, int size, int num_class
     return metrics;
 }
 
-void compute_metrics(int *predictions, int *targets, int size, int num_classes)
+void compute_metrics(int *predictions, int *targets, int size, int num_classes, char* metrics_path)
 {
     float *acc = accuracy(predictions, targets, size, num_classes);
     float **pr = precision_recall(predictions, targets, size, num_classes);
 
-    FILE *metrics_doc = fopen("metrics_output.txt", "w");
+    FILE *metrics_doc = fopen(metrics_path, "w");
     if (metrics_doc == NULL) {
         printf("Error opening file for writing\n");
         return;

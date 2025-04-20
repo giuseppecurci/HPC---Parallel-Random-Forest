@@ -19,6 +19,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
+
 #include "headers/utils.h"
 #include "headers/metrics.h"
 
@@ -27,59 +29,87 @@
 #include "headers/tree/train_utils.h"
 
 int main(int argc, char *argv[]) {
-    const char *filename = "data/classification_dataset.csv";  
-    int num_rows, num_columns;
     int max_matrix_rows_print = 0; // Default: print nothing
-    int num_classes = 0;
-
+    int num_classes = -1; 
+    char *new_tree_path = "random_tree.bin"; // Default path for the new tree
+    char *trained_tree_path = NULL; // Path to the trained tree
+    char *store_predictions_path = "predictions.csv"; // Default path for predictions
+    char *store_metrics_path = "metrics_output.txt"; // Default path for metrics
+    float train_proportion = 0.8;
+    
+    char *dataset_path = "data/classification_dataset.csv";  
+    int num_rows, num_columns;
+    float **train_data, **test_data;
+    int train_size, test_size;
+    
     // Parse command-line arguments
-    for (int i = 1; i < argc; i++) {
-        if (strcmp(argv[i], "--print_matrix") == 0 && i + 1 < argc) {
-            max_matrix_rows_print = atoi(argv[i + 1]);  // Convert to integer
-        }
-        else if (strcmp(argv[i], "--num_classes") == 0 && i + 1 < argc) {
-            num_classes = atoi(argv[i + 1]);
-        }
-    }
-
-    if (num_classes <= 0) {
-        printf("Number of classes must be a positive integer. Use --num_classes argument.\n");
+    int parse_result = parse_arguments(argc, argv, &max_matrix_rows_print, &num_classes,
+                                        &trained_tree_path, &store_predictions_path,
+                                        &store_metrics_path, &new_tree_path, &dataset_path,
+                                        &train_proportion);
+    if (parse_result != 0) {
+        printf("Error parsing arguments. Please check the command line options.\n");
         return 1;
     }
 
-    printf("Number of classes: %d\n", num_classes);
-
-    float **data = read_csv(filename, &num_rows, &num_columns);
+    float **data = read_csv(dataset_path, &num_rows, &num_columns);
+    stratified_split(data, num_rows, num_columns, train_proportion, &train_data, &train_size, &test_data, &test_size);
     if (data == NULL) {
         return 1;  
     }
-    printf("Loaded data\n");
-
-    // Optionally, print the matrix
+    printf("Loaded data\n--------------\n");
     if (max_matrix_rows_print != 0) {  
         print_matrix(data, num_rows, num_columns, max_matrix_rows_print);
+        printf("--------------\n");
+    }
+
+    int* targets = (int *)malloc(test_size * sizeof(int));
+    for (int i = 0; i < test_size; i++) {
+        targets[i] = (int)test_data[i][num_columns - 1];
+    }
+
+    if (num_classes <= 0) {
+        printf("Inferring number of classes from the dataset...\n");
+        for (int i = 0; i < test_size; i++) {
+            if (targets[i] > num_classes) num_classes = (int)targets[i];
+        }
+        num_classes++;
     }
 
     Tree *random_tree = (Tree *)malloc(sizeof(Tree));
-    train_tree(random_tree, data, num_rows, num_columns, num_classes);
-    //Tree *random_tree = deserialize_tree("random_tree.bin");
-    int *predictions;
-    int* targets = (int *)malloc(num_rows * sizeof(int));
-    printf("Getting targets\n");
-    for (int i = 0; i < num_rows; i++) {
-        targets[i] = (int)data[i][num_columns - 1];
+    if (trained_tree_path == NULL){
+        train_tree(random_tree, train_data, train_size, num_columns, num_classes);
+        serialize_tree(random_tree, new_tree_path);
+        printf("Tree saved to %s\n--------------\n", new_tree_path);
+    } else {
+        printf("Loading tree from %s\n", trained_tree_path);
+        random_tree = deserialize_tree(trained_tree_path);
+        if (random_tree == NULL) {
+            printf("Failed to load tree from %s\n", trained_tree_path);
+            return 1;
+        }
     }
+
+    int* predictions;
     printf("Starting inference:\n");
-    predictions = tree_inference(random_tree, data, num_rows);
-    save_predictions(predictions, num_rows, "predictions.csv");
-    printf("Inference completed\n");
-    compute_metrics(predictions, targets, num_rows, num_classes);
-    serialize_tree(random_tree, "random_tree.bin");
-    destroy_tree(random_tree);
+    predictions = tree_inference(random_tree, test_data, test_size);
+    save_predictions(predictions, test_size, store_predictions_path);
+    compute_metrics(predictions, targets, test_size, num_classes, store_metrics_path);
+    printf("Inference completed.\n -Predictions saved to %s \n -Metrics stored to %s \n--------------\n", store_predictions_path, store_metrics_path);
     
     // Free allocated memory
+    destroy_tree(random_tree);
     for (int i = 0; i < MAX_ROWS; i++) free(data[i]);
     free(data);
+    for (int i = 0; i < train_size; i++) {
+        free(train_data[i]);
+    }
+    free(train_data);
+
+    for (int i = 0; i < test_size; i++) {
+        free(test_data[i]);
+    }
+    free(test_data);
     free(predictions);
     free(targets);
     printf("Memory freed\n");

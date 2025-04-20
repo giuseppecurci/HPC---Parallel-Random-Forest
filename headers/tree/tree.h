@@ -13,7 +13,7 @@
 #define MAX_DEPTH 100
 
 // Minimum number of samples required to split a node
-#define MIN_SAMPLES_SPLIT 15
+#define MIN_SAMPLES_SPLIT 2
 
 /**
  * @struct Node

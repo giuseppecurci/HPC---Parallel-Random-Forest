@@ -16,10 +16,12 @@
 
 #include <stdio.h>
 #include <math.h>
+#include <time.h>
 
 //Max number of characters that can be stored in the buffer line
 #define MAX_LINE 1024
-#define MAX_ROWS 100000
+#define MAX_ROWS 20000000
+#define SEED 0
 
 /**
  * @brief Prints a matrix with specified number of rows and columns.
@@ -58,4 +60,39 @@ void print_array(float *arr, int size, int max_elements);
  */
 float** read_csv(const char *filename, int *num_rows, int *num_columns);
 
+/**
+ * @brief Performs a stratified split of the data into training and testing sets.
+ * 
+ * This function splits the data into training and testing sets while maintaining the distribution
+ * of target classes in both sets. The split is done based on a specified proportion for the training set.
+ * 
+ * @param data The input data matrix to be split.
+ * @param num_rows The number of rows in the input data matrix.
+ * @param num_columns The number of columns in the input data matrix.
+ * @param train_proportion The proportion of data to be used for training (between 0 and 1).
+ * @param train_data Output parameter that will store the training data matrix.
+ * @param train_size Output parameter that will store the size of the training data matrix.
+ * @param test_data Output parameter that will store the testing data matrix.
+ * @param test_size Output parameter that will store the size of the testing data matrix.
+ */
+void stratified_split(float **data, int num_rows, int num_columns, float train_proportion,
+                      float ***train_data, int *train_size, float ***test_data, int *test_size);
+
+/**
+ * @brief Parses command-line arguments for various options.
+ * 
+ * This function parses command-line arguments to set various parameters. It returns 0 on success
+ * and 1 on error. The function checks for the following arguments:
+ * @param max_matrix_rows_print Maximum number of rows to print from the matrix (--print_matrix).
+ * @param num_classes Number of classes in the dataset (--num_classes int).
+ * @param trained_tree_path Path for the trained tree to deserialize (--trained_tree_path).
+ * @param store_predictions_path Path for storing predictions (--store_predictions_path).
+ * @param store_metrics_path Path for storing performance metrics (--store_metrics_path).
+ * @param new_tree_path Path for the new tree to train and then serialize (--new_tree_path).
+ * @param dataset_path Path for the dataset to be used (--dataset_path).
+ * @param train_proportion Proportion of data to be used for training (--train_proportion).
+ */
+int parse_arguments(int argc, char *argv[], int *max_matrix_rows_print, int *num_classes,
+                    char **trained_tree_path, char **store_predictions_path, char **store_metrics_path,
+                    char **new_tree_path, char **dataset_path, float *train_proportion);
 #endif
