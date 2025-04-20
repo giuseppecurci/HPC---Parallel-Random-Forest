@@ -20,6 +20,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <errno.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 #include "headers/utils.h"
 #include "headers/metrics.h"
@@ -27,15 +30,17 @@
 #include "headers/tree/tree.h"
 #include "headers/tree/utils.h"
 #include "headers/tree/train_utils.h"
+#include "headers/forest.h"
 
 int main(int argc, char *argv[]) {
     int max_matrix_rows_print = 0; // Default: print nothing
     int num_classes = -1; 
-    char *new_tree_path = "random_tree.bin"; // Default path for the new tree
-    char *trained_tree_path = NULL; // Path to the trained tree
-    char *store_predictions_path = "predictions.csv"; // Default path for predictions
-    char *store_metrics_path = "metrics_output.txt"; // Default path for metrics
+    char *new_forest_path = "output/model"; 
+    char *trained_forest_path = NULL; 
+    char *store_predictions_path = "output/predictions.csv"; 
+    char *store_metrics_path = "output/metrics_output.txt"; 
     float train_proportion = 0.8;
+    int num_trees = 10;
     int seed = 0;
     
     char *dataset_path = "data/classification_dataset.csv";  
@@ -44,14 +49,23 @@ int main(int argc, char *argv[]) {
     int train_size, test_size;
     
     // Parse command-line arguments
-    int parse_result = parse_arguments(argc, argv, &max_matrix_rows_print, &num_classes,
-                                        &trained_tree_path, &store_predictions_path,
-                                        &store_metrics_path, &new_tree_path, &dataset_path,
+    int parse_result = parse_arguments(argc, argv, &max_matrix_rows_print, &num_classes, &num_trees,
+                                        &trained_forest_path, &store_predictions_path,
+                                        &store_metrics_path, &new_forest_path, &dataset_path,
                                         &train_proportion, &seed);
     if (parse_result != 0) {
         printf("Error parsing arguments. Please check the command line options.\n");
         return 1;
     }
+
+    struct stat st = {0};
+
+    if (stat(new_forest_path, &st) == -1) {
+        if (mkdir(new_forest_path, 0700) == 0) {
+            printf("Directory created: %s\n", new_forest_path);
+        } else {
+            perror("mkdir failed");
+        }}
 
     float **data = read_csv(dataset_path, &num_rows, &num_columns);
     stratified_split(data, num_rows, num_columns, train_proportion, &train_data, &train_size, &test_data, &test_size, seed);
@@ -77,33 +91,31 @@ int main(int argc, char *argv[]) {
         num_classes++;
     }
 
-    summary(dataset_path, train_proportion, train_size, num_columns,
+    summary(dataset_path, train_proportion, train_size, num_columns, num_trees,
             num_classes, store_predictions_path, store_metrics_path,
-            new_tree_path, trained_tree_path, seed);
+            new_forest_path, trained_forest_path, seed);
 
-    Tree *random_tree = (Tree *)malloc(sizeof(Tree));
-    if (trained_tree_path == NULL){
-        printf("Starting tree training\n");
-        train_tree(random_tree, train_data, train_size, num_columns, num_classes);
-        serialize_tree(random_tree, new_tree_path);
+    Forest *random_forest = (Forest *)malloc(sizeof(Forest));
+    create_forest(random_forest, num_trees, MAX_DEPTH, MIN_SAMPLES_SPLIT, "sqrt");
+    if (trained_forest_path == NULL){
+        train_forest(random_forest, train_data, train_size, num_columns, num_classes);
+        serialize_forest(random_forest, new_forest_path);
     } else {
-        printf("Loading tree from %s\n", trained_tree_path);
-        random_tree = deserialize_tree(trained_tree_path);
-        if (random_tree == NULL) {
-            printf("Failed to load tree from %s\n", trained_tree_path);
+        printf("Loading tree from %s\n", trained_forest_path);
+        random_forest = deserialize_forest(trained_forest_path);
+        if (random_forest == NULL) {
+            printf("Failed to load tree from %s\n", trained_forest_path);
             return 1;
         }
     }
 
     int* predictions;
-    printf("Starting inference.\n");
-    predictions = tree_inference(random_tree, test_data, test_size);
+    predictions = forest_inference(random_forest, test_data, test_size, num_classes);
     save_predictions(predictions, test_size, store_predictions_path);
     compute_metrics(predictions, targets, test_size, num_classes, store_metrics_path);
-    printf("Inference completed.\n");
     
     // Free allocated memory
-    destroy_tree(random_tree);
+    free_forest(random_forest);
     for (int i = 0; i < MAX_ROWS; i++) free(data[i]);
     free(data);
     for (int i = 0; i < train_size; i++) {

@@ -35,7 +35,6 @@ void get_class_pred(float** data, int num_rows, int num_columns, int num_classes
  */
 void destroy_tree(Tree *tree) {
     destroy_node(tree->root);
-    free(tree);
 };
 
 /**
@@ -165,6 +164,7 @@ Node *deserialize_node(FILE *fp) {
  * @return Pointer to the reconstructed Tree structure.
  */
 Tree *deserialize_tree(const char *filename) {
+    printf("Loading tree from %s\n", filename);
     FILE *fp = fopen(filename, "rb");
     if (!fp) {
         perror("Error opening file to load tree");

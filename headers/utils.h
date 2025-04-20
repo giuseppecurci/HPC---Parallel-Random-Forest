@@ -91,9 +91,10 @@ void stratified_split(float **data, int num_rows, int num_columns, float train_p
  * @param new_tree_path Path for the new tree to train and then serialize (--new_tree_path).
  * @param dataset_path Path for the dataset to be used (--dataset_path).
  * @param train_proportion Proportion of data to be used for training (--train_proportion).
+ * @param num_trees Number of trees to be used in the forest (--num_trees).
  * @param seed Random seed for reproducibility (--seed).
  */
-int parse_arguments(int argc, char *argv[], int *max_matrix_rows_print, int *num_classes,
+int parse_arguments(int argc, char *argv[], int *max_matrix_rows_print, int *num_classes, int *num_trees,
                     char **trained_tree_path, char **store_predictions_path, char **store_metrics_path,
                     char **new_tree_path, char **dataset_path, float *train_proportion, int *seed);
 
@@ -113,7 +114,7 @@ int parse_arguments(int argc, char *argv[], int *max_matrix_rows_print, int *num
  * @param trained_tree_path Path for the trained tree.
  * @param seed Random seed used for the run.
  */
-void summary(char* dataset_path, float train_proportion, int train_size, int num_columns,
+void summary(char* dataset_path, float train_proportion, int train_size, int num_columns, int num_trees,
              int num_classes, char* store_predictions_path, char* store_metrics_path,
              char* new_tree_path, char* trained_tree_path, int seed);
 #endif

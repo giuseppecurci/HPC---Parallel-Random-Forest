@@ -56,7 +56,7 @@ void print_array(float *arr, int size, int max_elements) {
 }
 
 void summary(char* dataset_path, float train_proportion, int train_size, int num_columns,
-             int num_classes, char* store_predictions_path, char* store_metrics_path,
+             int num_classes, int num_trees, char* store_predictions_path, char* store_metrics_path,
              char* new_tree_path, char* trained_tree_path, int seed) {
         printf("Summary setup:\n");
         printf(" - Dataset: %s\n", dataset_path);
@@ -67,10 +67,11 @@ void summary(char* dataset_path, float train_proportion, int train_size, int num
         printf(" - Predictions path: %s\n", store_predictions_path);
         printf(" - Metrics path: %s\n", store_metrics_path);
         if (trained_tree_path != NULL) {
-            printf(" - Trained Tree path: %s\n", trained_tree_path);
+            printf(" - Trained Forest path: %s\n", trained_tree_path);
         } else {
-            printf(" - New Tree path: %s\n", new_tree_path);
+            printf(" - New Forest path: %s\n", new_tree_path);
         }
+        printf(" - Number of trees: %d\n", num_trees);
         printf(" - Seed: %d\n", seed);
         printf("--------------\n");
     };
@@ -130,9 +131,9 @@ float** read_csv(const char *filename, int *num_rows, int *num_columns) {
     return data;
 }
 
-int parse_arguments(int argc, char *argv[], int *max_matrix_rows_print, int *num_classes,
-                    char **trained_tree_path, char **store_predictions_path, char **store_metrics_path,
-                    char **new_tree_path, char **dataset_path, float *train_proportion, int *seed) {
+int parse_arguments(int argc, char *argv[], int *max_matrix_rows_print, int *num_classes, int *num_trees,
+                    char **trained_forest_path, char **store_predictions_path, char **store_metrics_path,
+                    char **new_forest_path, char **dataset_path, float *train_proportion, int *seed) {
 
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--print_matrix") == 0 && i + 1 < argc) {
@@ -141,8 +142,11 @@ int parse_arguments(int argc, char *argv[], int *max_matrix_rows_print, int *num
         else if (strcmp(argv[i], "--num_classes") == 0 && i + 1 < argc) {
             *num_classes = atoi(argv[i + 1]);
         }
-        else if (strcmp(argv[i], "--trained_tree_path") == 0 && i + 1 < argc) {
-            *trained_tree_path = argv[i + 1]; 
+        else if (strcmp(argv[i], "--num_trees") == 0 && i + 1 < argc) {
+            *num_trees = atoi(argv[i + 1]);
+        }
+        else if (strcmp(argv[i], "--trained_forest_path") == 0 && i + 1 < argc) {
+            *trained_forest_path = argv[i + 1]; 
         }
         else if (strcmp(argv[i], "--store_predictions_path") == 0 && i + 1 < argc) {
             *store_predictions_path = argv[i + 1]; 
@@ -150,8 +154,8 @@ int parse_arguments(int argc, char *argv[], int *max_matrix_rows_print, int *num
         else if (strcmp(argv[i], "--store_metrics_path") == 0 && i + 1 < argc) {
             *store_metrics_path = argv[i + 1]; 
         }
-        else if (strcmp(argv[i], "--new_tree_path") == 0 && i + 1 < argc) {
-            *new_tree_path = argv[i + 1]; 
+        else if (strcmp(argv[i], "--new_forest_path") == 0 && i + 1 < argc) {
+            *new_forest_path = argv[i + 1]; 
         }
         else if (strcmp(argv[i], "--dataset_path") == 0 && i + 1 < argc) {
             *dataset_path = argv[i + 1]; 
