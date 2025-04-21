@@ -164,7 +164,6 @@ Node *deserialize_node(FILE *fp) {
  * @return Pointer to the reconstructed Tree structure.
  */
 Tree *deserialize_tree(const char *filename) {
-    printf("Loading tree from %s\n", filename);
     FILE *fp = fopen(filename, "rb");
     if (!fp) {
         perror("Error opening file to load tree");

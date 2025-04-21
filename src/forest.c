@@ -25,7 +25,8 @@ void train_forest(Forest *forest, float **data, int num_rows, int num_columns, i
     for (int i = 0; i < forest->num_trees; i++) {
         printf("\rTraining tree %d/%d... (%d%%)", i + 1, forest->num_trees, (i + 1) * 100 / forest->num_trees);
         fflush(stdout);
-        train_tree(&forest->trees[i], data, num_rows, num_columns, num_classes);
+        train_tree(&forest->trees[i], data, num_rows, num_columns, num_classes, 
+                   forest->max_depth, forest->min_samples_split, forest->max_features);
     }
     printf("\n");
 }
@@ -93,7 +94,7 @@ void serialize_forest(Forest *forest, const char *out_dir) {
     }
 }
 
-Forest* deserialize_forest(const char *dir_path) {
+void deserialize_forest(Forest *forest, const char *dir_path) {
     // Construct path to config file
     char config_path[512];
     snprintf(config_path, sizeof(config_path), "%s/forest_config.txt", dir_path);
@@ -101,44 +102,24 @@ Forest* deserialize_forest(const char *dir_path) {
     FILE *config_file = fopen(config_path, "rb");
     if (config_file == NULL) {
         perror("Failed to open forest config file");
-        return NULL;
+        return;
     }
-
-    Forest *forest = (Forest *)malloc(sizeof(Forest));
-    if (!forest) {
-        perror("Failed to allocate memory for forest");
-        fclose(config_file);
-        return NULL;
-    }
-
+    
     // Read forest configuration
-    fread(&forest->num_trees, sizeof(int), 1, config_file);
-    fread(&forest->max_depth, sizeof(int), 1, config_file);
-    fread(&forest->min_samples_split, sizeof(int), 1, config_file);
-
+    fscanf(config_file, "num_trees: %d\n", &forest->num_trees);
+    fscanf(config_file, "max_depth: %d\n", &forest->max_depth);
+    fscanf(config_file, "min_samples_split: %d\n", &forest->min_samples_split);
     // Read null-terminated string for max_features
-    char buffer[256];
-    fread(buffer, sizeof(char), sizeof(buffer), config_file);
-    forest->max_features = strdup(buffer);  // malloc + copy
+    char buffer[4];
+    fscanf(config_file, "max_features: %s\n", buffer);
+    forest->max_features = strdup(buffer);
 
     fclose(config_file);
 
-    // Allocate array for trees
-    forest->trees = (Tree *)malloc(forest->num_trees * sizeof(Tree));
-    if (!forest->trees) {
-        perror("Failed to allocate memory for trees");
-        free(forest->max_features);
-        free(forest);
-        return NULL;
-    }
-
     // Deserialize each tree from its file
     for (int i = 0; i < forest->num_trees; ++i) {
-        printf("%d", forest->num_trees);
         char tree_path[512];
         snprintf(tree_path, sizeof(tree_path), "%s/random_tree_%d.bin", dir_path, i);
         forest->trees[i] = *deserialize_tree(tree_path);
     }
-
-    return forest;
 }

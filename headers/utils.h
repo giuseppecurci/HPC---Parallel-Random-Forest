@@ -85,6 +85,10 @@ void stratified_split(float **data, int num_rows, int num_columns, float train_p
  * and 1 on error. The function checks for the following arguments:
  * @param max_matrix_rows_print Maximum number of rows to print from the matrix (--print_matrix).
  * @param num_classes Number of classes in the dataset (--num_classes int).
+ * @param num_trees Number of trees in the forest. (--num_trees int).
+ * @param max_depth Maximum depth of the trees. (--max_depth int).
+ * @param min_samples_split Minimum number of samples required to split a node. (--min_samples_split int).
+ * @param max_features Number of features to consider when looking for the best split. (--max_features char*).
  * @param trained_tree_path Path for the trained tree to deserialize (--trained_tree_path).
  * @param store_predictions_path Path for storing predictions (--store_predictions_path).
  * @param store_metrics_path Path for storing performance metrics (--store_metrics_path).
@@ -95,8 +99,9 @@ void stratified_split(float **data, int num_rows, int num_columns, float train_p
  * @param seed Random seed for reproducibility (--seed).
  */
 int parse_arguments(int argc, char *argv[], int *max_matrix_rows_print, int *num_classes, int *num_trees,
-                    char **trained_tree_path, char **store_predictions_path, char **store_metrics_path,
-                    char **new_tree_path, char **dataset_path, float *train_proportion, int *seed);
+                    int *max_depth, int *min_samples_split, char **max_features, char **trained_tree_path, 
+                    char **store_predictions_path, char **store_metrics_path, char **new_tree_path, 
+                    char **dataset_path, float *train_proportion, int *seed);
 
 /**
  * @brief Prints config used for a run.
@@ -107,6 +112,10 @@ int parse_arguments(int argc, char *argv[], int *max_matrix_rows_print, int *num
  * @param train_proportion Proportion of data used for training.
  * @param train_size Size of the training data.
  * @param num_columns Number of columns in the dataset.
+ * @param num_trees Number of trees in the forest.
+ * @param max_depth Maximum depth of the trees.
+ * @param min_samples_split Minimum number of samples required to split a node.
+ * @param max_features Number of features to consider when looking for the best split.
  * @param num_classes Number of classes in the dataset.
  * @param store_predictions_path Path to store predictions.
  * @param store_metrics_path Path to store performance metrics.
@@ -114,7 +123,8 @@ int parse_arguments(int argc, char *argv[], int *max_matrix_rows_print, int *num
  * @param trained_tree_path Path for the trained tree.
  * @param seed Random seed used for the run.
  */
-void summary(char* dataset_path, float train_proportion, int train_size, int num_columns, int num_trees,
-             int num_classes, char* store_predictions_path, char* store_metrics_path,
-             char* new_tree_path, char* trained_tree_path, int seed);
+void summary(char* dataset_path, float train_proportion, int train_size, int num_columns,
+             int num_classes, int num_trees, int max_depth, int min_samples_split, char* max_features, 
+             char* store_predictions_path, char* store_metrics_path, char* new_tree_path, 
+             char* trained_tree_path, int seed);
 #endif

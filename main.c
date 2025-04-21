@@ -41,6 +41,9 @@ int main(int argc, char *argv[]) {
     char *store_metrics_path = "output/metrics_output.txt"; 
     float train_proportion = 0.8;
     int num_trees = 10;
+    char* max_features = "sqrt";
+    int min_samples_split = 2;
+    int max_depth = 10;
     int seed = 0;
     
     char *dataset_path = "data/classification_dataset.csv";  
@@ -50,6 +53,7 @@ int main(int argc, char *argv[]) {
     
     // Parse command-line arguments
     int parse_result = parse_arguments(argc, argv, &max_matrix_rows_print, &num_classes, &num_trees,
+                                        &max_depth, &min_samples_split, &max_features,
                                         &trained_forest_path, &store_predictions_path,
                                         &store_metrics_path, &new_forest_path, &dataset_path,
                                         &train_proportion, &seed);
@@ -91,18 +95,18 @@ int main(int argc, char *argv[]) {
         num_classes++;
     }
 
-    summary(dataset_path, train_proportion, train_size, num_columns, num_trees,
-            num_classes, store_predictions_path, store_metrics_path,
-            new_forest_path, trained_forest_path, seed);
+    summary(dataset_path, train_proportion, train_size, num_columns, num_classes,
+            num_trees, max_depth, min_samples_split, max_features, store_predictions_path, 
+            store_metrics_path, new_forest_path, trained_forest_path, seed);
 
     Forest *random_forest = (Forest *)malloc(sizeof(Forest));
-    create_forest(random_forest, num_trees, MAX_DEPTH, MIN_SAMPLES_SPLIT, "sqrt");
+    create_forest(random_forest, num_trees, max_depth, min_samples_split, max_features);
     if (trained_forest_path == NULL){
         train_forest(random_forest, train_data, train_size, num_columns, num_classes);
         serialize_forest(random_forest, new_forest_path);
     } else {
         printf("Loading tree from %s\n", trained_forest_path);
-        random_forest = deserialize_forest(trained_forest_path);
+        deserialize_forest(random_forest, trained_forest_path);
         if (random_forest == NULL) {
             printf("Failed to load tree from %s\n", trained_forest_path);
             return 1;

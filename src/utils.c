@@ -56,8 +56,9 @@ void print_array(float *arr, int size, int max_elements) {
 }
 
 void summary(char* dataset_path, float train_proportion, int train_size, int num_columns,
-             int num_classes, int num_trees, char* store_predictions_path, char* store_metrics_path,
-             char* new_tree_path, char* trained_tree_path, int seed) {
+             int num_classes, int num_trees, int max_depth, int min_samples_split, char* max_features, 
+             char* store_predictions_path, char* store_metrics_path, char* new_tree_path, 
+             char* trained_tree_path, int seed) {
         printf("Summary setup:\n");
         printf(" - Dataset: %s\n", dataset_path);
         printf(" - Train/test size: %.2f/%.2f\n", train_proportion, 1-train_proportion);
@@ -72,6 +73,9 @@ void summary(char* dataset_path, float train_proportion, int train_size, int num
             printf(" - New Forest path: %s\n", new_tree_path);
         }
         printf(" - Number of trees: %d\n", num_trees);
+        printf(" - Max depth: %d\n", max_depth);
+        printf(" - Min samples split: %d\n", min_samples_split);
+        printf(" - Max features: %s\n", max_features);
         printf(" - Seed: %d\n", seed);
         printf("--------------\n");
     };
@@ -132,6 +136,7 @@ float** read_csv(const char *filename, int *num_rows, int *num_columns) {
 }
 
 int parse_arguments(int argc, char *argv[], int *max_matrix_rows_print, int *num_classes, int *num_trees,
+                    int *max_depth, int *min_samples_split, char **max_features,
                     char **trained_forest_path, char **store_predictions_path, char **store_metrics_path,
                     char **new_forest_path, char **dataset_path, float *train_proportion, int *seed) {
 
@@ -162,6 +167,15 @@ int parse_arguments(int argc, char *argv[], int *max_matrix_rows_print, int *num
         }
         else if (strcmp(argv[i], "--seed") == 0 && i + 1 < argc) {
             *seed = atoi(argv[i + 1]); 
+        }
+        else if (strcmp(argv[i], "--max_depth") == 0 && i + 1 < argc) {
+            *max_depth = atoi(argv[i + 1]); 
+        }
+        else if (strcmp(argv[i], "--min_samples_split") == 0 && i + 1 < argc) {
+            *min_samples_split = atoi(argv[i + 1]); 
+        }
+        else if (strcmp(argv[i], "--max_features") == 0 && i + 1 < argc) {
+            *max_features = argv[i + 1];
         }
         else if (strcmp(argv[i], "--train_proportion") == 0 && i + 1 < argc) {
             *train_proportion = atof(argv[i + 1]);

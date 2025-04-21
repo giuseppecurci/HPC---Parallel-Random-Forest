@@ -9,11 +9,6 @@
 #ifndef TREE_H
 #define TREE_H
 
-// Maximum depth for the tree
-#define MAX_DEPTH 100
-
-// Minimum number of samples required to split a node
-#define MIN_SAMPLES_SPLIT 2
 
 /**
  * @struct Node
@@ -79,8 +74,13 @@ Node *create_node(int feature, float threshold, Node *left, Node *right,
  * @param data          The data used for growing the tree.
  * @param num_columns   The number of columns (features) in the dataset.
  * @param num_classes   The number of distinct classes in the dataset.
+ * @param max_depth     The maximum depth of the tree.
+ * @param min_samples_split Minimum number of samples required to split a node.
+ * @param max_features  The number of features to consider when looking for the best split.
+ * @return None
  */
-void grow_tree(Node *parent, float **data, int num_columns, int num_classes);
+void grow_tree(Node *parent, float **data, int num_columns, int num_classes, 
+               int max_depth, int min_samples_split, char* max_features);
 
 /**
  * @brief Trains a decision tree using the provided data.
@@ -94,8 +94,12 @@ void grow_tree(Node *parent, float **data, int num_columns, int num_classes);
  * @param num_rows      The number of data samples.
  * @param num_columns   The number of features per data sample.
  * @param num_classes   The number of possible output classes.
+ * @param max_depth     The maximum depth of the tree.
+ * @param min_samples_split Minimum number of samples required to split a node.
+ * @param max_features  The number of features to consider when looking for the best split.
  */
-void train_tree(Tree *tree, float **data, int num_rows, int num_columns, int num_classes);
+void train_tree(Tree *tree, float **data, int num_rows, int num_columns, int num_classes, 
+                int max_depth, int min_samples_split, char* max_features);
 
 /**
  * @brief Performs inference on a set of data using the trained decision tree.

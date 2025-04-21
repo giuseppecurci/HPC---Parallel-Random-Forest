@@ -26,8 +26,9 @@ Node *create_node(int feature, float threshold, Node *left, Node *right, int pre
     return node;
 };
 
-void grow_tree(Node *parent, float **data, int num_columns, int num_classes) {
-    if (parent->num_samples < MIN_SAMPLES_SPLIT || parent->depth >= MAX_DEPTH) {
+void grow_tree(Node *parent, float **data, int num_columns, int num_classes, 
+               int max_depth, int min_samples_split, char* max_features) {
+    if (parent->num_samples < min_samples_split || parent->depth >= max_depth) {
         return;
     }
     
@@ -53,8 +54,10 @@ void grow_tree(Node *parent, float **data, int num_columns, int num_classes) {
     parent->left = create_node(-1, -1, NULL, NULL, best_class_pred_left, parent->depth + 1, INFINITY, best_size_left);
     parent->right = create_node(-1, -1, NULL, NULL, best_class_pred_right, parent->depth + 1, INFINITY, best_size_right);
 
-    grow_tree(parent->left, left_data, num_columns, num_classes);
-    grow_tree(parent->right, right_data, num_columns, num_classes);
+    grow_tree(parent->left, left_data, num_columns, num_classes, 
+              max_depth, min_samples_split, max_features);
+    grow_tree(parent->right, right_data, num_columns, num_classes, 
+              max_depth, min_samples_split, max_features);  
     for (int i = 0; i < best_size_left; i++) free(left_data[i]);
     free(left_data);
     for (int i = 0; i < best_size_right; i++) free(right_data[i]);
@@ -62,9 +65,10 @@ void grow_tree(Node *parent, float **data, int num_columns, int num_classes) {
 
 };
 
-void train_tree(Tree *tree, float **data, int num_rows, int num_columns, int num_classes) {
+void train_tree(Tree *tree, float **data, int num_rows, int num_columns, int num_classes, 
+                int max_depth, int min_samples_split, char* max_features) {
     tree->root = create_node(-1, -1000, NULL, NULL, -1, 0, 1000, num_rows);
-    grow_tree(tree->root, data, num_columns, num_classes);
+    grow_tree(tree->root, data, num_columns, num_classes, max_depth, min_samples_split, max_features);
 };
 
 int* tree_inference(Tree *tree, float **data, int num_rows) {
