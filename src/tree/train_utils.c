@@ -1,10 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 #include <string.h>
 #include <math.h>
-#include "train_utils.h" 
-#include "tree.h"
-#include "tree/utils.h"
+#include "../../headers/tree/train_utils.h" 
+#include "../../headers/tree/tree.h"
+#include "../../headers/tree/utils.h"
 
 int argmax(int *arr, int size) {
     int max_index = 0;
@@ -183,16 +184,55 @@ float* get_best_split_num_var(
         return best_split;
     }
 
+void shuffle(int *array, int size) {
+    // Fisher-Yates shuffle algorithm
+    for (int i = size - 1; i > 0; i--) {
+        // Generate a random index between 0 and i (inclusive)
+        int j = rand() % (i + 1);
+        
+        // Swap array[i] and array[j]
+        int temp = array[i];
+        array[i] = array[j];
+        array[j] = temp;
+    }
+}
+
+
 BestSplit find_best_split(float **data, int num_rows, int num_columns, 
                           int num_classes, int *class_pred_left, int *class_pred_right,
-                          int *best_size_left, int *best_size_right) 
+                          int *best_size_left, int *best_size_right, char *max_features) 
                           {
     BestSplit best_split = {INFINITY, 0.0, -1};
     int target_column = num_columns - 1;  // Assuming target column is the last one
 
-    for (int feature_col = 0; feature_col < num_columns; feature_col++) {
-        if (feature_col == target_column) continue;  // Skip target column
+	int features_to_consider = num_columns - 1; // Exclude target column
+	int selected_features[features_to_consider]; // contains the indices of columns to consider
+	int num_selected_features = 0;
 
+	// Handle different max_features scenarios
+	if (strcmp(max_features, "sqrt") == 0) {
+    	num_selected_features = (int) sqrt(features_to_consider);
+	} else if (strcmp(max_features, "log2") == 0) {
+   		num_selected_features = (int) (log(features_to_consider) / log(2));
+	} else {
+    	num_selected_features = atoi(max_features);
+	}
+
+	// Create a list of feature indices to consider
+	for (int i = 0; i < features_to_consider; i++) {
+		selected_features[i] = i;
+	}
+
+	// Randomly shuffle the all features 
+	shuffle(selected_features, features_to_consider);
+	
+	// Loop over the first num_selected_features column which were randomized
+    for (int i = 0; i < num_selected_features; i++) {
+		int feature_col = selected_features[i];
+
+        if (feature_col == target_column){ 
+            fprintf(stderr, "Error in function best_split you have selected the feature column\n");
+            exit(EXIT_FAILURE);}
         // Allocate arrays for sorting
         float *feature_values = malloc(num_rows * sizeof(float));
         float *target_values = malloc(num_rows * sizeof(float));

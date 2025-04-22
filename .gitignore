@@ -53,6 +53,7 @@ dkms.conf
 
 # Local files
 hpc_venv/
+venv/
 data/classification_dataset.csv
 final
 output/

@@ -105,7 +105,7 @@ float* get_best_split_num_var(float *sorted_array, float *target_array, int size
  */
 BestSplit find_best_split(float **data, int num_rows, int num_columns, int num_classes, 
                           int *class_pred_left, int *class_pred_right, int *best_size_left, 
-                          int *best_size_right);
+                          int *best_size_right, char* max_features);
 
 /**
  * @brief Splits the dataset into left and right subarrays based on a threshold.
@@ -125,4 +125,12 @@ BestSplit find_best_split(float **data, int num_rows, int num_columns, int num_c
  */                          
 void split_data(float** data, float** left_data, float** right_data, int num_rows, int num_columns, int target_index, float threshold);
 
+/**
+ * @brief Fisher-Yates algorithm implementation to shuffle an array in O(n)
+ *
+ * @param array The array to shuffle
+ * @size the size of the array
+ *
+ */
+void shuffle(int *array, int size);
 #endif 

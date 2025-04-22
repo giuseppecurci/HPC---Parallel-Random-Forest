@@ -9,7 +9,7 @@
 #ifndef FOREST_H
 #define FOREST_H
 
-#include "tree.h"
+#include "tree/tree.h"
 
 /**
  * @struct Forest

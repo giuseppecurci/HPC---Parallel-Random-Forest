@@ -2,12 +2,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
+#include "../headers/tree/train_utils.h"
+#include "../headers/tree/tree.h"
+#include "../headers/tree/utils.h"
+#include "../headers/forest.h"
+#include "../headers/utils.h"
 
-#include "forest.h"
-#include "utils.h"
-#include "tree/train_utils.h"
-#include "tree/tree.h"
-#include "tree/utils.h"
 
 void create_forest(Forest *forest, int num_trees, int max_depth, int min_samples_split, char* max_features) {
     forest->num_trees = num_trees;

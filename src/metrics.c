@@ -1,5 +1,7 @@
 #include <stdlib.h>
+#include <string.h>
 #include <stdio.h>
+#include <time.h>
 #include "../headers/metrics.h"
 
 float* accuracy(int *predictions, int *targets, int size, int num_classes)
@@ -78,6 +80,14 @@ void compute_metrics(int *predictions, int *targets, int size, int num_classes, 
         fprintf(metrics_doc, "Precision for class %d: %.6f\n", i, pr[0][i]);
         fprintf(metrics_doc, "Recall for class %d: %.6f\n", i, pr[1][i]);
         fprintf(metrics_doc, "*********************\n");
+    }
+	// Get and print timestamp
+    time_t now = time(NULL);
+    char *timestamp = ctime(&now);
+    if (timestamp != NULL) {
+        // Remove newline from timestamp
+        timestamp[strcspn(timestamp, "\n")] = '\0';
+        fprintf(metrics_doc, "Timestamp: %s\n", timestamp);
     }
 
     free(acc);

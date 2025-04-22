@@ -26,11 +26,11 @@
 
 #include "headers/utils.h"
 #include "headers/metrics.h"
+#include "headers/forest.h"
 
 #include "headers/tree/tree.h"
 #include "headers/tree/utils.h"
 #include "headers/tree/train_utils.h"
-#include "headers/forest.h"
 
 int main(int argc, char *argv[]) {
     int max_matrix_rows_print = 0; // Default: print nothing
@@ -64,12 +64,29 @@ int main(int argc, char *argv[]) {
 
     struct stat st = {0};
 
-    if (stat(new_forest_path, &st) == -1) {
-        if (mkdir(new_forest_path, 0700) == 0) {
-            printf("Directory created: %s\n", new_forest_path);
-        } else {
-            perror("mkdir failed");
-        }}
+	char parent_dir[256] = {0};
+	char *slash;
+	strncpy(parent_dir, new_forest_path, sizeof(parent_dir) - 1);
+	slash = strrchr(parent_dir, '/');
+	if (slash) {
+		*slash = '\0';  // Terminate the string at the last slash
+		if (stat(parent_dir, &st) == -1) {
+			if (mkdir(parent_dir, 0700) == -1) {
+				perror("Parent directory creation failed");
+				return 1;
+			}
+			printf("Parent directory created: %s\n", parent_dir);
+		}
+	}
+
+	// Now try to create the full path
+	if (stat(new_forest_path, &st) == -1) {
+		if (mkdir(new_forest_path, 0700) == 0) {
+			printf("Directory created: %s\n", new_forest_path);
+		} else {
+			perror("mkdir failed");
+		}
+	}
 
     float **data = read_csv(dataset_path, &num_rows, &num_columns);
     stratified_split(data, num_rows, num_columns, train_proportion, &train_data, &train_size, &test_data, &test_size, seed);
@@ -98,8 +115,8 @@ int main(int argc, char *argv[]) {
     summary(dataset_path, train_proportion, train_size, num_columns, num_classes,
             num_trees, max_depth, min_samples_split, max_features, store_predictions_path, 
             store_metrics_path, new_forest_path, trained_forest_path, seed);
-
-    Forest *random_forest = (Forest *)malloc(sizeof(Forest));
+    
+	Forest *random_forest = (Forest *)malloc(sizeof(Forest));
     create_forest(random_forest, num_trees, max_depth, min_samples_split, max_features);
     if (trained_forest_path == NULL){
         train_forest(random_forest, train_data, train_size, num_columns, num_classes);
