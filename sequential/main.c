@@ -46,7 +46,7 @@ int main(int argc, char *argv[]) {
     int max_depth = 10;
     int seed = 0;
     
-    char *dataset_path = "data/classification_dataset.csv";  
+    char *dataset_path = "../data/classification_dataset.csv";  
     int num_rows, num_columns;
     float **train_data, **test_data;
     int train_size, test_size;

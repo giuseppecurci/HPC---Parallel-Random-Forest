@@ -217,15 +217,15 @@ BestSplit find_best_split(float **data, int num_rows, int num_columns,
 	} else {
     	num_selected_features = atoi(max_features);
 	}
-
-	// Create a list of feature indices to consider
+	
+	// Create a list of feature indices to consider	
 	for (int i = 0; i < features_to_consider; i++) {
 		selected_features[i] = i;
 	}
-
-	// Randomly shuffle the all features 
-	shuffle(selected_features, features_to_consider);
 	
+	// Randomly shuffle all features 
+	shuffle(selected_features, features_to_consider);
+
 	// Loop over the first num_selected_features column which were randomized
     for (int i = 0; i < num_selected_features; i++) {
 		int feature_col = selected_features[i];
@@ -242,9 +242,9 @@ BestSplit find_best_split(float **data, int num_rows, int num_columns,
         }
 
         // Extract feature column and corresponding target values
-        for (int i = 0; i < num_rows; i++) {
-            feature_values[i] = data[i][feature_col];
-            target_values[i] = data[i][target_column];
+        for (int j = 0; j < num_rows; j++) {
+            feature_values[j] = data[j][feature_col];
+            target_values[j] = data[j][target_column];
         }
 
         // Sort the feature and target values together
