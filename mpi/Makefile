@@ -1,5 +1,5 @@
 # === CONFIG ===
-CC = gcc
+CC = mpicc
 FLAGS = -g -Wall -Wextra
 HEADERS = headers
 SOURCE = src
