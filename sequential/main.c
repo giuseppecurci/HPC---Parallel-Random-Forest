@@ -112,7 +112,7 @@ int main(int argc, char *argv[]) {
         num_classes++;
     }
 
-    summary(dataset_path, train_proportion, train_size, num_columns, num_classes,
+    summary(dataset_path, train_proportion, train_size, num_columns - 1, num_classes,
             num_trees, max_depth, min_samples_split, max_features, store_predictions_path, 
             store_metrics_path, new_forest_path, trained_forest_path, seed);
     
