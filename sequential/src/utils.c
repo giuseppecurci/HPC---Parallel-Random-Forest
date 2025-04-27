@@ -189,75 +189,48 @@ int parse_arguments(int argc, char *argv[], int *max_matrix_rows_print, int *num
     return 0;  // Return 0 if everything is parsed successfully
 }
 
-void stratified_split(float **data, int num_rows, int num_columns, float train_proportion,
+void stratified_split(float **data, int num_rows, int num_columns, int num_classes, float train_proportion,
                       float ***train_data, int *train_size, float ***test_data, int *test_size, int seed) {
-    // The last column is the target, so we need to extract it
-    int target_index = num_columns - 1;
 
-    // Allocate memory for the target values
-    float *targets = (float *)malloc(num_rows * sizeof(float));
-    if (!targets) {
-        perror("Memory allocation failed for targets");
-        exit(EXIT_FAILURE);
-    }
+    int target_index = num_columns - 1; 
 
-    // Extract target values
-    for (int i = 0; i < num_rows; i++) {
-        targets[i] = data[i][target_index];
-    }
-
-    // Create an array of indices and shuffle them
-    int *indices = (int *)malloc(num_rows * sizeof(int));
-    if (!indices) {
-        perror("Memory allocation failed for indices");
-        free(targets);
-        exit(EXIT_FAILURE);
-    }
-    for (int i = 0; i < num_rows; i++) {
-        indices[i] = i;
-    }
-
-    // Seed the random number generator
     srand(seed);
 
-    // Shuffle the indices to randomize the order
-    for (int i = num_rows - 1; i > 0; i--) {
-        int j = rand() % (i + 1);
-        int temp = indices[i];
-        indices[i] = indices[j];
-        indices[j] = temp;
-    }
-
-    // Create an array of stratified groups based on target values
-    // Group the indices by target values
-    int num_groups = 0;
+    int class_counts[num_classes];
+    memset(class_counts, 0, num_classes * sizeof(int));
+    int **class_indices = (int **)malloc(num_classes * sizeof(int *));
+    
+    // First pass: count samples per class
     for (int i = 0; i < num_rows; i++) {
-        int found = 0;
-        for (int j = 0; j < num_groups; j++) {
-            if (targets[indices[i]] == targets[indices[j]]) {
-                found = 1;
-                break;
-            }
-        }
-        if (!found) {
-            num_groups++;
-        }
+        int label = (int)data[i][target_index];
+        class_counts[label]++;
     }
 
-    // Allocate memory for train and test sets
-    *train_size = (int)(num_rows * train_proportion);
-    *test_size = num_rows - *train_size;
+    // Allocate space for indices
+    for (int i = 0; i < num_classes; i++) {
+        class_indices[i] = (int *)malloc(class_counts[i] * sizeof(int));
+    }
+
+    // Reset counts to use for filling indices
+    int class_fill_ptrs[num_classes];
+    memset(class_fill_ptrs, 0, num_classes * sizeof(int));
+
+    // Second pass: collect indices per class
+    for (int i = 0; i < num_rows; i++) {
+        int label = (int)data[i][target_index];
+        class_indices[label][class_fill_ptrs[label]++] = i;
+    }
+
+    // Compute train and test sizes
+    *train_size = 0;
+    *test_size = 0;
+    for (int i = 0; i < num_classes; i++) {
+        *train_size += (int)(class_counts[i] * train_proportion);
+        *test_size += class_counts[i] - (int)(class_counts[i] * train_proportion);
+    }
 
     *train_data = (float **)malloc(*train_size * sizeof(float *));
     *test_data = (float **)malloc(*test_size * sizeof(float *));
-    if (!*train_data || !*test_data) {
-        perror("Memory allocation failed for train/test data");
-        free(targets);
-        free(indices);
-        exit(EXIT_FAILURE);
-    }
-
-    // Allocate memory for each row in train and test sets
     for (int i = 0; i < *train_size; i++) {
         (*train_data)[i] = (float *)malloc(num_columns * sizeof(float));
     }
@@ -265,23 +238,41 @@ void stratified_split(float **data, int num_rows, int num_columns, float train_p
         (*test_data)[i] = (float *)malloc(num_columns * sizeof(float));
     }
 
-    // Split the data into train and test based on stratified groups
-    int train_index = 0, test_index = 0;
-    for (int i = 0; i < num_rows; i++) {
-        if (i < *train_size) {
-            for (int j = 0; j < num_columns; j++) {
-                (*train_data)[train_index][j] = data[indices[i]][j];
+    // Now split inside each class
+    int train_idx = 0;
+    int test_idx = 0;
+    for (int c = 0; c < num_classes; c++) {
+        int n = class_counts[c];
+
+        // Shuffle indices inside the class
+        for (int i = n - 1; i > 0; i--) {
+            int j = rand() % (i + 1);
+            int tmp = class_indices[c][i];
+            class_indices[c][i] = class_indices[c][j];
+            class_indices[c][j] = tmp;
+        }
+
+        int num_train = (int)(n * train_proportion);
+
+        for (int i = 0; i < n; i++) {
+            int row_idx = class_indices[c][i];
+            if (i < num_train) {
+                for (int j = 0; j < num_columns; j++) {
+                    (*train_data)[train_idx][j] = data[row_idx][j];
+                }
+                train_idx++;
+            } else {
+                for (int j = 0; j < num_columns; j++) {
+                    (*test_data)[test_idx][j] = data[row_idx][j];
+                }
+                test_idx++;
             }
-            train_index++;
-        } else {
-            for (int j = 0; j < num_columns; j++) {
-                (*test_data)[test_index][j] = data[indices[i]][j];
-            }
-            test_index++;
         }
     }
 
-    // Clean up memory
-    free(targets);
-    free(indices);
+    // Clean up
+    for (int i = 0; i < num_classes; i++) {
+        free(class_indices[i]);
+    }
+    free(class_indices);
 }

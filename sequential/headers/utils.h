@@ -75,7 +75,7 @@ float** read_csv(const char *filename, int *num_rows, int *num_columns);
  * @param test_size Output parameter that will store the size of the testing data matrix.
  * @param seed Random seed for reproducibility.
  */
-void stratified_split(float **data, int num_rows, int num_columns, float train_proportion,
+void stratified_split(float **data, int num_rows, int num_columns, int num_classes, float train_proportion,
                       float ***train_data, int *train_size, float ***test_data, int *test_size, int seed);
 
 /**

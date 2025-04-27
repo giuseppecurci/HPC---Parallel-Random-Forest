@@ -89,7 +89,16 @@ int main(int argc, char *argv[]) {
 	}
 
     float **data = read_csv(dataset_path, &num_rows, &num_columns);
-    stratified_split(data, num_rows, num_columns, train_proportion, &train_data, &train_size, &test_data, &test_size, seed);
+
+    if (num_classes <= 0) {
+        printf("Inferring number of classes from the dataset...\n");
+        for (int i = 0; i < num_rows; i++) {
+            if (data[i][num_columns - 1] > num_classes) num_classes = (int)data[i][num_columns - 1];
+        }
+        num_classes++;
+    }
+
+    stratified_split(data, num_rows, num_columns, num_classes, train_proportion, &train_data, &train_size, &test_data, &test_size, seed);
     if (data == NULL) {
         return 1;  
     }
@@ -102,14 +111,6 @@ int main(int argc, char *argv[]) {
     int* targets = (int *)malloc(test_size * sizeof(int));
     for (int i = 0; i < test_size; i++) {
         targets[i] = (int)test_data[i][num_columns - 1];
-    }
-
-    if (num_classes <= 0) {
-        printf("Inferring number of classes from the dataset...\n");
-        for (int i = 0; i < test_size; i++) {
-            if (targets[i] > num_classes) num_classes = (int)targets[i];
-        }
-        num_classes++;
     }
 
     summary(dataset_path, train_proportion, train_size, num_columns - 1, num_classes,
