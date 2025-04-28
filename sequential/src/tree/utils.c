@@ -9,9 +9,9 @@
 
 #include <stdlib.h>
 #include <stdio.h>
-#include "../headers/tree/utils.h"
-#include "../headers/tree/tree.h"
-#include "../headers/tree/train_utils.h"
+#include "../../headers/tree/utils.h"
+#include "../../headers/tree/tree.h"
+#include "../../headers/tree/train_utils.h"
 
 /**
  * @brief Assigns the most frequent class label in the current node's data as its prediction.

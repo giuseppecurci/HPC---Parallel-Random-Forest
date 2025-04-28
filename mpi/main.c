@@ -1,5 +1,4 @@
 // MPI Implementation#include <stdio.h>
-
 #include <mpi.h>
 #include <stdlib.h>
 #include <string.h>
@@ -37,7 +36,6 @@ int main(int argc, char *argv[]) {
 	int *targets;
     int train_size, test_size;
 	int sample_size;
-	int train_total_length, test_total_length;
     
     // Parse command-line arguments
     int parse_result = parse_arguments(argc, argv, &max_matrix_rows_print, &num_classes, &num_trees,
@@ -96,6 +94,10 @@ int main(int argc, char *argv[]) {
 		}
 
     	stratified_split(data, num_rows, num_columns, num_classes, train_proportion, &train_data, &train_size, &test_data, &test_size, seed);
+		if (test_data == NULL) {
+			printf("test_data is NULL after stratified_split. Aborting.\n");
+			MPI_Abort(MPI_COMM_WORLD, 1);
+		}	
 		// Broadcast important dimensions first
 		MPI_Bcast(&test_size, 1, MPI_INT, 0, MPI_COMM_WORLD);
 		MPI_Bcast(&num_columns, 1, MPI_INT, 0, MPI_COMM_WORLD);
@@ -147,21 +149,14 @@ int main(int argc, char *argv[]) {
 			targets[i] = (int)test_data[i * num_columns + (num_columns - 1)];
 		}
 
-		if (num_classes <= 0) {
-			printf("Inferring number of classes from the dataset...\n");
-			for (int i = 0; i < test_size; i++) {
-				if (targets[i] > num_classes) num_classes = (int)targets[i];
-			}
-			num_classes++;
-		}
-
 		MPI_Bcast(&num_classes, 1, MPI_INT, 0, MPI_COMM_WORLD);
 		MPI_Bcast(targets, test_size, MPI_INT, 0, MPI_COMM_WORLD);
-
+		MPI_Bcast(test_data, test_size * num_columns, MPI_FLOAT, 0, MPI_COMM_WORLD);
     	summary(dataset_path, train_proportion, train_size, num_columns - 1, num_classes,
             num_trees, max_depth, min_samples_split, max_features, store_predictions_path, 
             store_metrics_path, new_forest_path, trained_forest_path, seed);
 	}
+
 // OTHER PROCESSES
 	else {
 		MPI_Bcast(&test_size, 1, MPI_INT, 0, MPI_COMM_WORLD);
@@ -177,7 +172,7 @@ int main(int argc, char *argv[]) {
 		MPI_Recv(train_data, sample_size * num_columns, MPI_FLOAT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 		
 		printf("\n");
-		printf("Num_rows = %d, Num_columns = %d, myrank = %d", train_size, num_columns, rank);
+		printf("Num_rows = %d, Num_columns = %d, myrank = %d", sample_size, num_columns, rank);
 		printf("\n");
 		
 		// Allocate memory for targets
@@ -189,7 +184,38 @@ int main(int argc, char *argv[]) {
 
 		MPI_Bcast(&num_classes, 1, MPI_INT, 0, MPI_COMM_WORLD);
 		MPI_Bcast(targets, test_size, MPI_INT, 0, MPI_COMM_WORLD);
+
+		// Allocate memory for test data
+		test_data = (float *)malloc(test_size * num_columns * sizeof(float));
+		if (!test_data) {
+			perror("Malloc failed for test_data");
+			MPI_Abort(MPI_COMM_WORLD, 1);
+		}
+		
+		// Receive test data from process 0
+		MPI_Bcast(test_data, test_size * num_columns, MPI_FLOAT, 0, MPI_COMM_WORLD);
+		
+		// grow trees
+		Tree tree;
+		train_tree_1d(&tree, train_data, sample_size, num_columns, num_classes, 
+                 max_depth, min_samples_split, max_features);
+    	printf("Process %d: Tree successfully grown\n", rank);
+		int *predictions = tree_inference_1d(&tree, test_data, test_size, num_columns);
+
+		// Compute accuracy
+		int correct = 0;
+		for (int i = 0; i < test_size; i++) {
+			if (predictions[i] == targets[i]) {
+				correct++;
+			}
+		}
+		
+		float accuracy = (float)correct / test_size * 100.0;
+		printf("Process %d: Accuracy on test set: %.2f%%\n", rank, accuracy);
+		
+		free(predictions);
 	}
+
 // RECAP
 	for (int p = 0; p < process_number; p++) {
 		if (rank == p) {
@@ -218,6 +244,7 @@ int main(int argc, char *argv[]) {
 	}
 	free(targets);
 	free(train_data);
+	free(test_data);
 	MPI_Finalize();
 	return 0;
 }
