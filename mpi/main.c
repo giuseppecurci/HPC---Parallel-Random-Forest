@@ -82,8 +82,19 @@ int main(int argc, char *argv[]) {
 		}
 
 		data = read_csv(dataset_path, &num_rows, &num_columns);
+		
+		if (num_classes <= 0) {
+			printf("Inferring number of classes from the dataset...\n");
+			for (int i = 0; i < num_rows; i++) {
+				int label = (int)data[i * num_columns + (num_columns - 1)];  // Access the label
+				if (label > num_classes) {
+					num_classes = label;
+				}
+			}
+			num_classes++;
+		}
 		// capire questa parte qua
-    	stratified_split(data, num_rows, num_columns, train_proportion, &train_data, &train_size, &test_data, &test_size, seed);
+    	stratified_split(data, num_rows, num_columns, num_classes, train_proportion, &train_data, &train_size, &test_data, &test_size, seed);
 		
 		// Compute total length of train data
 		int train_total_length = train_size * num_columns;
@@ -113,6 +124,13 @@ int main(int argc, char *argv[]) {
 		MPI_Bcast(&num_classes, 1, MPI_INT, 0, MPI_COMM_WORLD);
 		MPI_Bcast(targets, test_size, MPI_INT, 0, MPI_COMM_WORLD);
 
+		for(int i = 0; i < test_size; i++){
+			float val = targets[i];
+			printf("\n");
+			printf("Target: %f", val);
+			printf("\n");
+		}
+
 	}
 
 	else {
@@ -121,8 +139,6 @@ int main(int argc, char *argv[]) {
 		MPI_Bcast(&train_size, 1, MPI_INT, 0, MPI_COMM_WORLD);
 		MPI_Bcast(&test_size, 1, MPI_INT, 0, MPI_COMM_WORLD);
 		MPI_Bcast(&num_columns, 1, MPI_INT, 0, MPI_COMM_WORLD);
-
-
 		
 		printf("\n");
 		printf("Num_rows = %d, Num_columns = %d, myrank = %d", train_size, num_columns, rank);
@@ -140,50 +156,44 @@ int main(int argc, char *argv[]) {
 		MPI_Bcast(train_data, train_total_length, MPI_FLOAT, 0, MPI_COMM_WORLD);
 		
 		// Allocate memory for targets
-		if (rank != 0) {
-			targets = (int *)malloc(test_size * sizeof(int));
+		targets = (int *)malloc(test_size * sizeof(int));
+		if (!targets) {
+			perror("Malloc failed for targets");
+			MPI_Abort(MPI_COMM_WORLD, 1);
 		}
-		
+
+		MPI_Bcast(&num_classes, 1, MPI_INT, 0, MPI_COMM_WORLD);
 		MPI_Bcast(targets, test_size, MPI_INT, 0, MPI_COMM_WORLD);
 		// Fino a qui checkato e testato tutto
-		free(train_data);
 	}
 
-
 	for (int p = 0; p < process_number; p++) {
-    if (rank == p) {
-        printf("\n========== Process %d Info ==========\n", rank);
-        printf("Rank: %d/%d\n", rank, process_number-1);
-        printf("Dataset dimensions: %d rows, %d columns\n", train_size, num_columns);
-        printf("Train set: %d samples\n", train_size);
-        printf("Test set: %d samples\n", test_size);
-        
-        // Print first row of train data as sample
-        printf("First row of training data:\n");
-        for(int i = 0; i < num_columns; i++) {
-            int index = (0 * num_columns) + i;
-            printf("  Column %d: %f\n", i, train_data[index]);
-        }
-        
-        // Print first few target values
-        printf("First 5 target values (or fewer if less available):\n");
-        int target_display = test_size < 5 ? test_size : 5;
-        for(int i = 0; i < target_display; i++) {
-            printf("  targets[%d] = %d\n", i, targets[i]);
-        }
-        
-        // Memory info
-        if (rank == 0) {
-            printf("Process 0 is the coordinator\n");
-        } else {
-            printf("Process received %d floats in train_data\n", train_size * num_columns);
-            printf("Process received %d integers in targets\n", test_size);
-        }
-        printf("=======================================\n");
-    }
-    MPI_Barrier(MPI_COMM_WORLD); // synchronize all processes before next one prints
-}
+		if (rank == p) {
+			printf("\n========== Process %d Info ==========\n", rank);
+			printf("Rank: %d/%d\n", rank, process_number-1);
+			printf("Train Dataset dimensions: %d rows, %d columns\n", train_size, num_columns);
+			printf("Test Dataset dimensions: %d rows, %d columns\n", test_size, num_columns);
+			
+			// Print first row of train data as sample
+			printf("First row of training data:\n");
+			for(int i = 0; i < num_columns; i++) {
+				int index = (0 * num_columns) + i;
+				printf("  Column %d: %f\n", i, train_data[index]);
+			}
+			
+			// Memory info
+			if (rank == 0) {
+				printf("Process 0 is the coordinator\n");
+			} else {
+				printf("Process received %d floats in train_data\n", train_size * num_columns);
+				printf("Process received %d integers in targets\n", test_size);
+			}
+			printf("=======================================\n");
+		}
+		MPI_Barrier(MPI_COMM_WORLD); // synchronize all processes before next one prints
+	}
 	free(targets);
+	free(train_data);
 	MPI_Finalize();
 	return 0;
 }

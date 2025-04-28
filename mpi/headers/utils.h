@@ -28,5 +28,5 @@ int parse_arguments(int argc, char *argv[], int *max_matrix_rows_print, int *num
                     char **dataset_path, float *train_proportion, int *seed);
 float* read_csv(const char *filename, int *num_rows, int *num_columns);
 
-void stratified_split(float *data, int num_rows, int num_columns, float train_proportion,
-                      float **train_data, int *train_size, float **test_data, int *test_size, int seed);
+void stratified_split(float *data, int num_rows, int num_columns, int num_classes, float train_proportion,
+                     float **train_data, int *train_size, float **test_data, int *test_size, int seed);
