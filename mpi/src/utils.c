@@ -218,3 +218,28 @@ void stratified_split(float *data, int num_rows, int num_columns, int num_classe
     free(class_fill_ptrs);
 }
 
+void summary(char* dataset_path, float train_proportion, int train_size, int num_columns,
+             int num_classes, int num_trees, int max_depth, int min_samples_split, char* max_features, 
+             char* store_predictions_path, char* store_metrics_path, char* new_tree_path, 
+             char* trained_tree_path, int seed) {
+        printf("Summary setup:\n");
+        printf(" - Dataset: %s\n", dataset_path);
+        printf(" - Train/test size: %.2f/%.2f\n", train_proportion, 1-train_proportion);
+        printf(" - Training samples: %d\n", train_size);
+        printf(" - Number of features: %d\n", num_columns);
+        printf(" - Number of classes: %d\n", num_classes);
+        printf(" - Predictions path: %s\n", store_predictions_path);
+        printf(" - Metrics path: %s\n", store_metrics_path);
+        if (trained_tree_path != NULL) {
+            printf(" - Trained Forest path: %s\n", trained_tree_path);
+        } else {
+            printf(" - New Forest path: %s\n", new_tree_path);
+        }
+        printf(" - Number of trees: %d\n", num_trees);
+        printf(" - Max depth: %d\n", max_depth);
+        printf(" - Min samples split: %d\n", min_samples_split);
+        printf(" - Max features: %s\n", max_features);
+        printf(" - Seed: %d\n", seed);
+        printf("--------------\n");
+    };
+

@@ -30,3 +30,9 @@ float* read_csv(const char *filename, int *num_rows, int *num_columns);
 
 void stratified_split(float *data, int num_rows, int num_columns, int num_classes, float train_proportion,
                      float **train_data, int *train_size, float **test_data, int *test_size, int seed);
+
+
+void summary(char* dataset_path, float train_proportion, int train_size, int num_columns,
+             int num_classes, int num_trees, int max_depth, int min_samples_split, char* max_features, 
+             char* store_predictions_path, char* store_metrics_path, char* new_tree_path, 
+             char* trained_tree_path, int seed);

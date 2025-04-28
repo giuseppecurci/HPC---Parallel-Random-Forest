@@ -36,6 +36,8 @@ int main(int argc, char *argv[]) {
     float *train_data, *test_data;
 	int *targets;
     int train_size, test_size;
+	int sample_size;
+	int train_total_length, test_total_length;
     
     // Parse command-line arguments
     int parse_result = parse_arguments(argc, argv, &max_matrix_rows_print, &num_classes, &num_trees,
@@ -52,9 +54,8 @@ int main(int argc, char *argv[]) {
 	MPI_Init(&argc, &argv);
 	MPI_Comm_size(MPI_COMM_WORLD, &process_number);
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-
+// PROCESS 0
 	if(rank == 0) {
-
 		// check if the directory of the dataset exists
 		struct stat st = {0};
 		char parent_dir[256] = {0};
@@ -93,20 +94,53 @@ int main(int argc, char *argv[]) {
 			}
 			num_classes++;
 		}
-		// capire questa parte qua
-    	stratified_split(data, num_rows, num_columns, num_classes, train_proportion, &train_data, &train_size, &test_data, &test_size, seed);
-		
-		// Compute total length of train data
-		int train_total_length = train_size * num_columns;
 
+    	stratified_split(data, num_rows, num_columns, num_classes, train_proportion, &train_data, &train_size, &test_data, &test_size, seed);
 		// Broadcast important dimensions first
-		MPI_Bcast(&train_size, 1, MPI_INT, 0, MPI_COMM_WORLD);
 		MPI_Bcast(&test_size, 1, MPI_INT, 0, MPI_COMM_WORLD);
 		MPI_Bcast(&num_columns, 1, MPI_INT, 0, MPI_COMM_WORLD);
-
-		// Now broadcast only the train_data
-		MPI_Bcast(train_data, train_total_length, MPI_FLOAT, 0, MPI_COMM_WORLD);
 		
+		// Sample 75% of the train data and send it over
+		for (int p = 1; p < process_number; p++) {
+			sample_size = (int)(0.75 * train_size);
+			int *sampled_indices = (int *)malloc(sample_size * sizeof(int));
+
+			// Random sampling without replacement
+			for (int i = 0; i < sample_size; i++) {
+				int idx;
+				int unique;
+				do {
+					unique = 1;
+					idx = rand() % train_size;
+					// Check if idx was already chosen
+					for (int j = 0; j < i; j++) {
+						if (sampled_indices[j] == idx) {
+							unique = 0;
+							break;
+						}
+					}
+				} while (!unique);
+				sampled_indices[i] = idx;
+			}
+
+			// Allocate a temporary buffer for sampled data
+			float *sampled_data = (float *)malloc(sample_size * num_columns * sizeof(float));
+
+			for (int i = 0; i < sample_size; i++) {
+				int original_row = sampled_indices[i];
+				for (int j = 0; j < num_columns; j++) {
+					sampled_data[i * num_columns + j] = train_data[original_row * num_columns + j];
+				}
+			}
+
+			// First, send the sample_size to process p
+			MPI_Send(&sample_size, 1, MPI_INT, p, 0, MPI_COMM_WORLD);
+
+			// Now send the actual flattened sampled data
+			MPI_Send(sampled_data, sample_size * num_columns, MPI_FLOAT, p, 0, MPI_COMM_WORLD);
+			free(sampled_indices);
+			free(sampled_data);
+		}
 		targets = (int *)malloc(test_size * sizeof(int));
 	
 		for (int i = 0; i < test_size; i++) {
@@ -124,36 +158,27 @@ int main(int argc, char *argv[]) {
 		MPI_Bcast(&num_classes, 1, MPI_INT, 0, MPI_COMM_WORLD);
 		MPI_Bcast(targets, test_size, MPI_INT, 0, MPI_COMM_WORLD);
 
-		for(int i = 0; i < test_size; i++){
-			float val = targets[i];
-			printf("\n");
-			printf("Target: %f", val);
-			printf("\n");
-		}
-
+    	summary(dataset_path, train_proportion, train_size, num_columns - 1, num_classes,
+            num_trees, max_depth, min_samples_split, max_features, store_predictions_path, 
+            store_metrics_path, new_forest_path, trained_forest_path, seed);
 	}
-
+// OTHER PROCESSES
 	else {
-		int train_total_length, test_total_length;
-		
-		MPI_Bcast(&train_size, 1, MPI_INT, 0, MPI_COMM_WORLD);
 		MPI_Bcast(&test_size, 1, MPI_INT, 0, MPI_COMM_WORLD);
 		MPI_Bcast(&num_columns, 1, MPI_INT, 0, MPI_COMM_WORLD);
+		MPI_Recv(&sample_size, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+		// Allocate memory
+		train_data = (float *)malloc(sample_size * num_columns * sizeof(float));
+		if (!train_data) {
+			perror("Malloc failed for train_data");
+			MPI_Abort(MPI_COMM_WORLD, 1);}
+		// Receive train_data
+		MPI_Recv(train_data, sample_size * num_columns, MPI_FLOAT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 		
 		printf("\n");
 		printf("Num_rows = %d, Num_columns = %d, myrank = %d", train_size, num_columns, rank);
 		printf("\n");
-	
-		// Now allocate the right size
-		train_total_length = train_size * num_columns;
-		train_data = (float *)malloc(train_total_length * sizeof(float));
-		if (!train_data) {
-			perror("Malloc failed for train_data");
-			MPI_Abort(MPI_COMM_WORLD, 1);
-		}
-
-		// Receive train data
-		MPI_Bcast(train_data, train_total_length, MPI_FLOAT, 0, MPI_COMM_WORLD);
 		
 		// Allocate memory for targets
 		targets = (int *)malloc(test_size * sizeof(int));
@@ -164,14 +189,13 @@ int main(int argc, char *argv[]) {
 
 		MPI_Bcast(&num_classes, 1, MPI_INT, 0, MPI_COMM_WORLD);
 		MPI_Bcast(targets, test_size, MPI_INT, 0, MPI_COMM_WORLD);
-		// Fino a qui checkato e testato tutto
 	}
-
+// RECAP
 	for (int p = 0; p < process_number; p++) {
 		if (rank == p) {
 			printf("\n========== Process %d Info ==========\n", rank);
 			printf("Rank: %d/%d\n", rank, process_number-1);
-			printf("Train Dataset dimensions: %d rows, %d columns\n", train_size, num_columns);
+			printf("Train Dataset dimensions: %d rows, %d columns\n", sample_size, num_columns);
 			printf("Test Dataset dimensions: %d rows, %d columns\n", test_size, num_columns);
 			
 			// Print first row of train data as sample
@@ -185,7 +209,7 @@ int main(int argc, char *argv[]) {
 			if (rank == 0) {
 				printf("Process 0 is the coordinator\n");
 			} else {
-				printf("Process received %d floats in train_data\n", train_size * num_columns);
+				printf("Process received %d floats in train_data\n", sample_size * num_columns);
 				printf("Process received %d integers in targets\n", test_size);
 			}
 			printf("=======================================\n");
@@ -197,3 +221,4 @@ int main(int argc, char *argv[]) {
 	MPI_Finalize();
 	return 0;
 }
+
