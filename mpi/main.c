@@ -214,38 +214,34 @@ int main(int argc, char *argv[]) {
 		printf("Process %d: Accuracy on test set: %.2f%%\n", rank, accuracy);
 		
 		free(predictions);
+
+		char filepath[256];
+		snprintf(filepath, sizeof(filepath), "output/model/random_tree_%d.bin", rank);
+		serialize_tree(&tree, filepath);
+		destroy_tree(&tree);
+
+		Tree* tree_deserialized = deserialize_tree(filepath);
+
+    	printf("Process %d: Tree successfully grown\n", rank);
+		predictions = tree_inference_1d(tree_deserialized, test_data, test_size, num_columns);
+
+		// Compute accuracy
+		correct = 0;
+		for (int i = 0; i < test_size; i++) {
+			if (predictions[i] == targets[i]) {
+				correct++;
+			}
+		}
+		
+		accuracy = (float)correct / test_size * 100.0;
+		printf("Process %d: Accuracy on test after reloading the same tree is: %.2f%%\n", rank, accuracy);
+		free(predictions);
+		destroy_tree(tree_deserialized);
 	}
 
-// RECAP
-	for (int p = 0; p < process_number; p++) {
-		if (rank == p) {
-			printf("\n========== Process %d Info ==========\n", rank);
-			printf("Rank: %d/%d\n", rank, process_number-1);
-			printf("Train Dataset dimensions: %d rows, %d columns\n", sample_size, num_columns);
-			printf("Test Dataset dimensions: %d rows, %d columns\n", test_size, num_columns);
-			
-			// Print first row of train data as sample
-			printf("First row of training data:\n");
-			for(int i = 0; i < num_columns; i++) {
-				int index = (0 * num_columns) + i;
-				printf("  Column %d: %f\n", i, train_data[index]);
-			}
-			
-			// Memory info
-			if (rank == 0) {
-				printf("Process 0 is the coordinator\n");
-			} else {
-				printf("Process received %d floats in train_data\n", sample_size * num_columns);
-				printf("Process received %d integers in targets\n", test_size);
-			}
-			printf("=======================================\n");
-		}
-		MPI_Barrier(MPI_COMM_WORLD); // synchronize all processes before next one prints
-	}
 	free(targets);
 	free(train_data);
 	free(test_data);
 	MPI_Finalize();
 	return 0;
 }
-
