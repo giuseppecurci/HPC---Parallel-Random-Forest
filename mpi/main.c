@@ -15,6 +15,7 @@
 #include "headers/tree/tree.h"
 #include "headers/tree/utils.h"
 #include "headers/tree/train_utils.h"
+#include "headers/tree/memory_ser.h"
 
 int main(int argc, char *argv[]) {
     int max_matrix_rows_print = 0; // Default: print nothing
@@ -36,6 +37,9 @@ int main(int argc, char *argv[]) {
 	int *targets;
     int train_size, test_size;
 	int sample_size;
+	void* buffer;
+	int buffer_size;
+
     
     // Parse command-line arguments
     int parse_result = parse_arguments(argc, argv, &max_matrix_rows_print, &num_classes, &num_trees,
@@ -155,7 +159,8 @@ int main(int argc, char *argv[]) {
     	summary(dataset_path, train_proportion, train_size, num_columns - 1, num_classes,
             num_trees, max_depth, min_samples_split, max_features, store_predictions_path, 
             store_metrics_path, new_forest_path, trained_forest_path, seed);
-		// up until here all good
+		
+
 		// metrics computation 
 		int **all_predictions = (int **)malloc((process_number - 1) * sizeof(int *));
 		for (int p = 1; p < process_number; p++) {
@@ -167,61 +172,57 @@ int main(int argc, char *argv[]) {
 			MPI_Recv(all_predictions[p-1], test_size, MPI_INT, p, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 			printf("Received predictions from process %d\n", p);
 		}
+		// Call the wrapper function to aggregate and save predictions
+		aggregate_and_save_predictions(process_number, test_size, num_classes,
+                                all_predictions, targets, 
+                                store_predictions_path, store_metrics_path, rank);
 
-		// Aggregate votes
-		int *aggregated_predictions = (int *)malloc(test_size * sizeof(int));
-		for (int i = 0; i < test_size; i++) {
-			// Create a vote count array for each class
-			int *votes = (int *)calloc(num_classes, sizeof(int));
-			
-			// Count votes from each process
-			for (int p = 0; p < process_number - 1; p++) {
-				int predicted_class = all_predictions[p][i];
-				if (predicted_class >= 0 && predicted_class < num_classes) {
-					votes[predicted_class]++;
-				}
-			}
-			
-			// Find the class with the maximum votes
-			int max_votes = -1;
-			int max_class = 0;
-			for (int c = 0; c < num_classes; c++) {
-				if (votes[c] > max_votes) {
-					max_votes = votes[c];
-					max_class = c;
-				}
-			}
-			
-			// Assign the majority vote as the prediction
-			aggregated_predictions[i] = max_class;
-			free(votes);
-		}
-
-		// Save predictions to file if requested
-		if (store_predictions_path != NULL) {
-			FILE *pred_file = fopen(store_predictions_path, "w");
-			if (pred_file == NULL) {
-				printf("Error opening predictions file for writing\n");
-			} else {
-				fprintf(pred_file, "true_label,predicted_label\n");
-				for (int i = 0; i < test_size; i++) {
-					fprintf(pred_file, "%d,%d\n", targets[i], aggregated_predictions[i]);
-				}
-				fclose(pred_file);
-			}
-		}
-
-		// Compute and save metrics
-		if (store_metrics_path != NULL) {
-			compute_metrics(aggregated_predictions, targets, test_size, num_classes, store_metrics_path);
-		}
 
 		// Free allocated memory
 		for (int p = 0; p < process_number - 1; p++) {
 			free(all_predictions[p]);
 		}
 		free(all_predictions);
-		free(aggregated_predictions);
+
+		// ATM WORKS WITH 1 HARD CODED PROCESS
+
+		MPI_Recv(&buffer_size, 1, MPI_INT, 1, 2, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+		buffer = malloc(buffer_size);
+		MPI_Recv(buffer, buffer_size, MPI_BYTE, 1, 3, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+		struct Tree received_tree;
+		deserialize_tree_from_buffer(buffer, &received_tree);
+
+		// make predictions with received tree to see if it works
+		
+
+		// Allocate the 2D array for storing predictions (1 row for process 0's predictions)
+		int **all_predictions2 = (int **)malloc(process_number * sizeof(int *));
+		for (int i = 0; i < process_number; i++) {
+			all_predictions2[i] = (int *)malloc(test_size * sizeof(int)); // Allocate space for each process' predictions
+		}
+
+		// Process 0 makes its own predictions
+		int *predictions = tree_inference_1d(&received_tree, test_data, test_size, num_columns);
+
+		// Store the 1D predictions in the first row of all_predictions (since we are in Process 0)
+		for (int i = 0; i < test_size; i++) {
+			all_predictions2[0][i] = predictions[i];
+		}
+
+		// Call the wrapper function to aggregate and save predictions
+		aggregate_and_save_predictions(process_number, test_size, num_classes,
+									all_predictions2, targets,
+                                store_predictions_path, store_metrics_path, rank);
+
+		free(predictions);
+
+		// Now you can write it to disk using your original `serialize_tree()` if needed
+		char filepath[256];
+		snprintf(filepath, sizeof(filepath), "output/model/random_tree_%d.bin", rank);
+		serialize_tree(&received_tree, filepath); 
+		free(buffer);
+		destroy_tree(&received_tree);
 	}
 
 // OTHER PROCESSES
@@ -268,15 +269,20 @@ int main(int argc, char *argv[]) {
                  max_depth, min_samples_split, max_features);
     	printf("Process %d: Tree successfully grown\n", rank);
 		int *predictions = tree_inference_1d(&tree, test_data, test_size, num_columns);
-
 	
 		MPI_Send(predictions, test_size, MPI_INT, 0, 1, MPI_COMM_WORLD);
 		printf("Process %d: Sent predictions to process 0\n", rank);
 
 		free(predictions);
-		char filepath[256];
+		/* char filepath[256];
 		snprintf(filepath, sizeof(filepath), "output/model/random_tree_%d.bin", rank);
-		serialize_tree(&tree, filepath);
+		serialize_tree(&tree, filepath); */
+		serialize_tree_to_buffer(&tree, &buffer, &buffer_size);
+
+		MPI_Send(&buffer_size, 1, MPI_INT, 0, 2, MPI_COMM_WORLD);
+		MPI_Send(buffer, buffer_size, MPI_BYTE, 0, 3, MPI_COMM_WORLD);
+
+		free(buffer);
 		destroy_tree(&tree);
 	}
 

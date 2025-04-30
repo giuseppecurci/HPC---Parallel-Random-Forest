@@ -63,7 +63,7 @@ float** precision_recall(int *predictions, int *targets, int size, int num_class
     return metrics;
 }
 
-void compute_metrics(int *predictions, int *targets, int size, int num_classes, char* metrics_path)
+void compute_metrics(int *predictions, int *targets, int size, int num_classes, const char* metrics_path, int rank)
 {
     float *acc = accuracy(predictions, targets, size, num_classes);
     float **pr = precision_recall(predictions, targets, size, num_classes);
@@ -87,11 +87,76 @@ void compute_metrics(int *predictions, int *targets, int size, int num_classes, 
     if (timestamp != NULL) {
         // Remove newline from timestamp
         timestamp[strcspn(timestamp, "\n")] = '\0';
-        fprintf(metrics_doc, "Timestamp: %s\n", timestamp);
+        fprintf(metrics_doc, "Timestamp: %s\n Process that wrote the file: %d", timestamp, rank);
     }
 
     free(acc);
     for (int i = 0; i < 2; i++) free(pr[i]);
     free(pr);
     fclose(metrics_doc);
+}
+
+void aggregate_and_save_predictions(int process_number, int test_size, int num_classes,
+                                     int **all_predictions, int *targets, 
+                                     const char *store_predictions_path, const char *store_metrics_path, int rank) {
+    // Aggregate votes
+    int *aggregated_predictions = (int *)malloc(test_size * sizeof(int));
+    if (!aggregated_predictions) {
+        printf("Memory allocation failed for aggregated_predictions\n");
+        return;
+    }
+
+    for (int i = 0; i < test_size; i++) {
+        // Create a vote count array for each class
+        int *votes = (int *)calloc(num_classes, sizeof(int));
+        if (!votes) {
+            printf("Memory allocation failed for votes\n");
+            free(aggregated_predictions);
+            return;
+        }
+
+        // Count votes from each process
+        for (int p = 0; p < process_number - 1; p++) {
+            int predicted_class = all_predictions[p][i];
+            if (predicted_class >= 0 && predicted_class < num_classes) {
+                votes[predicted_class]++;
+            }
+        }
+
+        // Find the class with the maximum votes
+        int max_votes = -1;
+        int max_class = 0;
+        for (int c = 0; c < num_classes; c++) {
+            if (votes[c] > max_votes) {
+                max_votes = votes[c];
+                max_class = c;
+            }
+        }
+
+        // Assign the majority vote as the prediction
+        aggregated_predictions[i] = max_class;
+        free(votes);
+    }
+
+    // Save predictions to file if requested
+    if (store_predictions_path != NULL) {
+        FILE *pred_file = fopen(store_predictions_path, "w");
+        if (pred_file == NULL) {
+            printf("Error opening predictions file for writing\n");
+        } else {
+            fprintf(pred_file, "true_label,predicted_label\n");
+            for (int i = 0; i < test_size; i++) {
+                fprintf(pred_file, "%d,%d\n", targets[i], aggregated_predictions[i]);
+            }
+            fclose(pred_file);
+        }
+    }
+
+    // Compute and save metrics if requested
+    if (store_metrics_path != NULL) {
+        compute_metrics(aggregated_predictions, targets, test_size, num_classes, store_metrics_path, rank);
+    }
+
+    // Free allocated memory
+    free(aggregated_predictions);
 }

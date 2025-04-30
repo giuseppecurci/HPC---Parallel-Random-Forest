@@ -61,6 +61,9 @@ float** precision_recall(int *predictions, int *targets, int size, int num_class
  * @param num_classes The number of unique classes.
  * @param metrics_path The path to the .txt file where the metrics will be saved. 
  */
-void compute_metrics(int *predictions, int *targets, int size, int num_classes, char* metrics_path);
+void compute_metrics(int *predictions, int *targets, int size, int num_classes, const char* metrics_path, int rank);
 
+void aggregate_and_save_predictions(int process_number, int test_size, int num_classes,
+                                     int **all_predictions, int *targets,
+                                     const char *store_predictions_path, const char *store_metrics_path, int rank);
 #endif
