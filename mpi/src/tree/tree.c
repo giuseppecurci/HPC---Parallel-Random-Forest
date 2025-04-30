@@ -212,10 +212,3 @@ int* tree_inference_1d(Tree *tree, float *data, int num_rows, int num_columns) {
     return predictions;
 }
 
-// MPI implementation for training a tree
-void mpi_train_tree(Tree *tree, float *train_data, int sample_size, int num_columns, 
-                   int num_classes, int max_depth, int min_samples_split, char* max_features) {
-    // Train the tree with the received data portion
-    train_tree_1d(tree, train_data, sample_size, num_columns, num_classes,
-                max_depth, min_samples_split, max_features);
-}
