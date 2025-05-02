@@ -242,4 +242,65 @@ void summary(char* dataset_path, float train_proportion, int train_size, int num
         printf(" - Seed: %d\n", seed);
         printf("--------------\n");
     };
-
+/**
+ * Samples data without replacement from the training dataset
+ *
+ * @param train_data The full training dataset
+ * @param train_size Number of samples in the training dataset
+ * @param num_columns Number of features per sample
+ * @param sample_proportion Proportion of data to sample (e.g., 0.75 for 75%)
+ * @param sampled_data Output buffer for the sampled data (must be pre-allocated)
+ * @return Returns 0 on success, non-zero on failure
+ */
+int sample_data_without_replacement(float *train_data, int train_size, int num_columns, 
+                                   float sample_proportion, float *sampled_data) {
+    if (train_data == NULL || sampled_data == NULL || train_size <= 0 || 
+        num_columns <= 0 || sample_proportion <= 0 || sample_proportion > 1) {
+        fprintf(stderr, "Invalid parameters for data sampling\n");
+        return 1;
+    }
+    
+    int sample_size = (int)(sample_proportion * train_size);
+    if (sample_size <= 0) {
+        fprintf(stderr, "Sample size is too small\n");
+        return 1;
+    }
+    
+    // Allocate array for sampled indices
+    int *sampled_indices = (int *)malloc(sample_size * sizeof(int));
+    if (sampled_indices == NULL) {
+        fprintf(stderr, "Failed to allocate memory for sampled indices\n");
+        return 1;
+    }
+    
+    // Random sampling without replacement
+    for (int i = 0; i < sample_size; i++) {
+        int idx;
+        int unique;
+        do {
+            unique = 1;
+            idx = rand() % train_size;
+            // Check if idx was already chosen
+            for (int j = 0; j < i; j++) {
+                if (sampled_indices[j] == idx) {
+                    unique = 0;
+                    break;
+                }
+            }
+        } while (!unique);
+        sampled_indices[i] = idx;
+    }
+    
+    // Fill the sampled data buffer
+    for (int i = 0; i < sample_size; i++) {
+        int original_row = sampled_indices[i];
+        for (int j = 0; j < num_columns; j++) {
+            sampled_data[i * num_columns + j] = train_data[original_row * num_columns + j];
+        }
+    }
+    
+    // Free temporary buffer
+    free(sampled_indices);
+    
+    return sample_size; // Return the actual number of samples created
+};

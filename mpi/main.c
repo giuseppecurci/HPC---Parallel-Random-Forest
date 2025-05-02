@@ -38,7 +38,7 @@ int main(int argc, char *argv[]) {
     int train_size, test_size;
 	int sample_size;
 	void* buffer;
-	int buffer_size;
+	int buffer_size, mode;
 
     
     // Parse command-line arguments
@@ -56,33 +56,11 @@ int main(int argc, char *argv[]) {
 	MPI_Init(&argc, &argv);
 	MPI_Comm_size(MPI_COMM_WORLD, &process_number);
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-// PROCESS 0
-	if(rank == 0) {
-		// check if the directory of the dataset exists
-		struct stat st = {0};
-		char parent_dir[256] = {0};
-		char *slash;
-		strncpy(parent_dir, new_forest_path, sizeof(parent_dir) - 1);
-		slash = strrchr(parent_dir, '/');
-		if (slash) {
-			*slash = '\0';  // Terminate the string at the last slash
-			if (stat(parent_dir, &st) == -1) {
-				if (mkdir(parent_dir, 0700) == -1) {
-					perror("Parent directory creation failed");
-					return 1;
-				}
-				printf("Parent directory created: %s\n", parent_dir);
-			}
-		}
 
-		// Now try to create the full path
-		if (stat(new_forest_path, &st) == -1) {
-			if (mkdir(new_forest_path, 0700) == 0) {
-				printf("Directory created: %s\n", new_forest_path);
-			} else {
-				perror("mkdir failed");
-			}
-		}
+// PROCESS 0
+	if (rank == 0) {
+		check_dir_existence(new_forest_path);
+		mode = check_bin_files_exist(new_forest_path);
 
 		data = read_csv(dataset_path, &num_rows, &num_columns);
 		
@@ -106,50 +84,37 @@ int main(int argc, char *argv[]) {
 		MPI_Bcast(&test_size, 1, MPI_INT, 0, MPI_COMM_WORLD);
 		MPI_Bcast(&num_columns, 1, MPI_INT, 0, MPI_COMM_WORLD);
 		
+		sample_size = (int)(0.75 * train_size);
 		// Sample 75% of the train data and send it over
 		for (int p = 1; p < process_number; p++) {
-			sample_size = (int)(0.75 * train_size);
-			int *sampled_indices = (int *)malloc(sample_size * sizeof(int));
-
-			// Random sampling without replacement
-			for (int i = 0; i < sample_size; i++) {
-				int idx;
-				int unique;
-				do {
-					unique = 1;
-					idx = rand() % train_size;
-					// Check if idx was already chosen
-					for (int j = 0; j < i; j++) {
-						if (sampled_indices[j] == idx) {
-							unique = 0;
-							break;
-						}
-					}
-				} while (!unique);
-				sampled_indices[i] = idx;
-			}
-
-			// Allocate a temporary buffer for sampled data
-			float *sampled_data = (float *)malloc(sample_size * num_columns * sizeof(float));
-
-			for (int i = 0; i < sample_size; i++) {
-				int original_row = sampled_indices[i];
-				for (int j = 0; j < num_columns; j++) {
-					sampled_data[i * num_columns + j] = train_data[original_row * num_columns + j];
+				// Allocate sampled_data buffer
+				float *sampled_data = (float *)malloc(sample_size * num_columns * sizeof(float));
+				if (sampled_data == NULL) {
+					fprintf(stderr, "Failed to allocate memory for sampled data\n");
+					MPI_Abort(MPI_COMM_WORLD, 1);
 				}
-			}
-
-			// First, send the sample_size to process p
-			MPI_Send(&sample_size, 1, MPI_INT, p, 0, MPI_COMM_WORLD);
-
-			// Now send the actual flattened sampled data
-			MPI_Send(sampled_data, sample_size * num_columns, MPI_FLOAT, p, 0, MPI_COMM_WORLD);
-			free(sampled_indices);
-			free(sampled_data);
+				
+				// Call sampling function
+				int actual_sample_size = sample_data_without_replacement(
+					train_data, train_size, num_columns, 0.75, sampled_data);
+					
+				if (actual_sample_size <= 0) {
+					fprintf(stderr, "Error in sampling data for process %d\n", p);
+					free(sampled_data);
+					MPI_Abort(MPI_COMM_WORLD, 1);
+				}
+				
+				// Send the data size first
+				MPI_Send(&actual_sample_size, 1, MPI_INT, p, 0, MPI_COMM_WORLD);
+				
+				// Send the sampled data
+				MPI_Send(sampled_data, actual_sample_size * num_columns, MPI_FLOAT, p, 0, MPI_COMM_WORLD);
+				
+				// Free the buffer
+				free(sampled_data);
 		}
 
 		targets = (int *)malloc(test_size * sizeof(int));
-	
 		for (int i = 0; i < test_size; i++) {
 			targets[i] = (int)test_data[i * num_columns + (num_columns - 1)];
 		}
@@ -161,42 +126,90 @@ int main(int argc, char *argv[]) {
             num_trees, max_depth, min_samples_split, max_features, store_predictions_path, 
             store_metrics_path, new_forest_path, trained_forest_path, seed);
 
+		// BASED ON MODE WE DO DIFFERENT STUFF
+		//
+		MPI_Bcast(&mode, 1, MPI_INT, 0, MPI_COMM_WORLD);
+        if (mode == 1) {
+            printf("Found .bin files in directory: %s\n", new_forest_path);
+            // Take action based on .bin files existing
+			// Lettura e invio albero (hard coded)
+			Tree *tree;
+			tree = deserialize_tree("output/model/random_tree_0.bin");
+			
+			serialize_tree_to_buffer(tree, &buffer, &buffer_size);
+			printf("\n");
+			printf("Process 0 is about to send the tree, the buffer size is: %d", buffer_size);
+			printf("\n");
 
-		// Lettura e invio albero (hard coded)
-		Tree *tree;
-		tree = deserialize_tree("output/model/random_tree_0.bin");
-		
-		serialize_tree_to_buffer(tree, &buffer, &buffer_size);
-		printf("\n");
-		printf("Process 0 is about to send the tree, the buffer size is: %d", buffer_size);
-		printf("\n");
+			MPI_Send(&buffer_size, 1, MPI_INT, 1, 2, MPI_COMM_WORLD);
+			MPI_Send(buffer, buffer_size, MPI_BYTE, 1, 3, MPI_COMM_WORLD);
 
-		MPI_Send(&buffer_size, 1, MPI_INT, 1, 2, MPI_COMM_WORLD);
-		MPI_Send(buffer, buffer_size, MPI_BYTE, 1, 3, MPI_COMM_WORLD);
+			free(buffer);
 
-		free(buffer);
-
-		// Receive predictions from all worker processes
-		int **all_predictions = (int **)malloc((process_number - 1) * sizeof(int *));
-		for (int p = 1; p < process_number; p++) {
-			all_predictions[p-1] = (int *)malloc(test_size * sizeof(int));
-		}
-		for (int p = 1; p < process_number; p++) {
-			MPI_Recv(all_predictions[p-1], test_size, MPI_INT, p, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-			printf("Received predictions from process %d\n", p);
-		}
-		// Call the wrapper function to aggregate and save predictions
-		aggregate_and_save_predictions(process_number, test_size, num_classes,
-                                all_predictions, targets, 
-                                store_predictions_path, store_metrics_path, rank);
+			// Receive predictions from all worker processes
+			int **all_predictions = (int **)malloc((process_number - 1) * sizeof(int *));
+			for (int p = 1; p < process_number; p++) {
+				all_predictions[p-1] = (int *)malloc(test_size * sizeof(int));
+			}
+			for (int p = 1; p < process_number; p++) {
+				MPI_Recv(all_predictions[p-1], test_size, MPI_INT, p, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+				printf("Received predictions from process %d\n", p);
+			}
+			// Call the wrapper function to aggregate and save predictions
+			aggregate_and_save_predictions(process_number, test_size, num_classes,
+									all_predictions, targets, 
+									store_predictions_path, store_metrics_path, rank);
 
 
-		// Free allocated memory
-		for (int p = 0; p < process_number - 1; p++) {
-			free(all_predictions[p]);
-		}
-		free(all_predictions);
+			// Free allocated memory
+			for (int p = 0; p < process_number - 1; p++) {
+				free(all_predictions[p]);
+			}
+			free(all_predictions);
 
+        } else if (mode == 0) {
+			// NO TREES IN DIRECTORY
+            printf("No .bin files found in directory: %s\n", new_forest_path);
+            // Take action based on no .bin files
+			// Receive predictions from all worker processes
+			int **all_predictions = (int **)malloc((process_number - 1) * sizeof(int *));
+			for (int p = 1; p < process_number; p++) {
+				all_predictions[p-1] = (int *)malloc(test_size * sizeof(int));
+			}
+			for (int p = 1; p < process_number; p++) {
+				MPI_Recv(all_predictions[p-1], test_size, MPI_INT, p, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+				printf("Received predictions from process %d\n", p);
+			}
+			aggregate_and_save_predictions(process_number, test_size, num_classes,
+									all_predictions, targets, 
+									store_predictions_path, store_metrics_path, rank);
+
+
+			// Free allocated memory
+			for (int p = 0; p < process_number - 1; p++) {
+				free(all_predictions[p]);
+			}
+			free(all_predictions);
+			// receive trees
+			MPI_Recv(&buffer_size, 1, MPI_INT, 1, 2, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+			buffer = malloc(buffer_size);
+			MPI_Recv(buffer, buffer_size, MPI_BYTE, 1, 3, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+			Tree *tree = malloc(sizeof(Tree));
+			if (!tree) {
+				perror("malloc failed for tree");
+				MPI_Abort(MPI_COMM_WORLD, 1);
+			}
+			deserialize_tree_from_buffer(buffer, tree); 
+
+			// write trees
+			char filepath[256];
+			snprintf(filepath, sizeof(filepath), "output/model/random_tree_%d.bin", rank);
+			serialize_tree(tree, filepath);
+
+        } else {
+			perror("Malloc failed for test_data");
+			MPI_Abort(MPI_COMM_WORLD, 1);
+        }
 
 	}
 
@@ -238,31 +251,63 @@ int main(int argc, char *argv[]) {
 		// Receive test data from process 0
 		MPI_Bcast(test_data, test_size * num_columns, MPI_FLOAT, 0, MPI_COMM_WORLD);
 		
-		// receive tree
+		// receive mode
+		MPI_Bcast(&mode, 1, MPI_INT, 0, MPI_COMM_WORLD);
+        if (mode == 1) {
+            printf("Found .bin files in directory: %s\n", new_forest_path);
+            // Take action based on .bin files existing
+			// receive trees
+			// do inference
+			// send results
+			MPI_Recv(&buffer_size, 1, MPI_INT, 0, 2, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+			buffer = malloc(buffer_size);
+			MPI_Recv(buffer, buffer_size, MPI_BYTE, 0, 3, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+			Tree *tree = malloc(sizeof(Tree));
+			if (!tree) {
+				perror("malloc failed for tree");
+				MPI_Abort(MPI_COMM_WORLD, 1);
+			}
+			deserialize_tree_from_buffer(buffer, tree); 
 
-		MPI_Recv(&buffer_size, 1, MPI_INT, 0, 2, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-		buffer = malloc(buffer_size);
-		MPI_Recv(buffer, buffer_size, MPI_BYTE, 0, 3, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-		Tree *tree = malloc(sizeof(Tree));
-		if (!tree) {
-			perror("malloc failed for tree");
-			MPI_Abort(MPI_COMM_WORLD, 1);
-		}
-		deserialize_tree_from_buffer(buffer, tree); 
+			int *predictions = tree_inference_1d(tree, test_data, test_size, num_columns);
+		
+			MPI_Send(predictions, test_size, MPI_INT, 0, 1, MPI_COMM_WORLD);
+			printf("Process %d: Sent predictions to process 0\n", rank);
 
-		// 
-		int *predictions = tree_inference_1d(tree, test_data, test_size, num_columns);
-	
-		MPI_Send(predictions, test_size, MPI_INT, 0, 1, MPI_COMM_WORLD);
-		printf("Process %d: Sent predictions to process 0\n", rank);
+			free(predictions);
+			free(buffer);
+			destroy_tree(tree);
+        } else {
+			// NO TREES IN DIRECTORY
+            printf("No .bin files found in directory: %s\n", new_forest_path);
+            // Take action based on no .bin files
+			// train from scratch
+			Tree tree;
+			train_tree_1d(&tree, train_data, sample_size, num_columns, num_classes, 
+					 max_depth, min_samples_split, max_features);
+			printf("Process %d: Tree successfully grown\n", rank);
+			
+			// do inference
+			int *predictions = tree_inference_1d(&tree, test_data, test_size, num_columns);
+			// send results
+			MPI_Send(predictions, test_size, MPI_INT, 0, 1, MPI_COMM_WORLD);
+			printf("Process %d: Sent predictions to process 0\n", rank);
+			free(predictions);
 
-		free(predictions);
-		/* char filepath[256];
-		snprintf(filepath, sizeof(filepath), "output/model/random_tree_%d.bin", rank);
-		serialize_tree(&tree, filepath); */
+			// send trees
+			//
+			serialize_tree_to_buffer(&tree, &buffer, &buffer_size);
+			printf("\n");
+			printf("Process %d about to send the tree, the buffer size is: %d", rank, buffer_size);
+			printf("\n");
 
-		free(buffer);
-		destroy_tree(tree);
+			MPI_Send(&buffer_size, 1, MPI_INT, 0, 2, MPI_COMM_WORLD);
+			MPI_Send(buffer, buffer_size, MPI_BYTE, 0, 3, MPI_COMM_WORLD);
+
+			free(buffer);
+			destroy_tree(&tree);
+
+        }
 	}
 
 	free(targets);
@@ -270,4 +315,4 @@ int main(int argc, char *argv[]) {
 	free(test_data);
 	MPI_Finalize();
 	return 0;
-}
+	}

@@ -36,3 +36,15 @@ void summary(char* dataset_path, float train_proportion, int train_size, int num
              int num_classes, int num_trees, int max_depth, int min_samples_split, char* max_features, 
              char* store_predictions_path, char* store_metrics_path, char* new_tree_path, 
              char* trained_tree_path, int seed);
+/**
+ * Samples data without replacement from the training dataset
+ *
+ * @param train_data The full training dataset
+ * @param train_size Number of samples in the training dataset
+ * @param num_columns Number of features per sample
+ * @param sample_proportion Proportion of data to sample (e.g., 0.75 for 75%)
+ * @param sampled_data Output buffer for the sampled data (must be pre-allocated)
+ * @return Returns 0 on success, non-zero on failure
+ */
+int sample_data_without_replacement(float *train_data, int train_size, int num_columns, 
+                                   float sample_proportion, float *sampled_data);

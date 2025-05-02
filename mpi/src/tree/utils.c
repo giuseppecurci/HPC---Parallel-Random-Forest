@@ -9,10 +9,19 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <dirent.h>    
+#include <string.h>     
 #include "../../headers/tree/utils.h"
 #include "../../headers/tree/tree.h"
 #include "../../headers/tree/train_utils.h"
 
+#include <mpi.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+#include <stdio.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 /**
  * @brief Assigns the most frequent class label in the current node's data as its prediction.
  *        Not used in the current implementation.
@@ -180,4 +189,75 @@ Tree *deserialize_tree(const char *filename) {
     tree->root = deserialize_node(fp);
     fclose(fp);
     return tree;
+}
+
+void check_dir_existence(const char *new_forest_path) {
+    struct stat st = {0};
+    char parent_dir[256] = {0};
+    char *slash;
+    
+    if (new_forest_path == NULL) {
+        printf("Error: Path is NULL\n");
+    }
+    
+    strncpy(parent_dir, new_forest_path, sizeof(parent_dir) - 1);
+    slash = strrchr(parent_dir, '/');
+    if (slash) {
+        *slash = '\0';  // Terminate the string at the last slash
+        if (stat(parent_dir, &st) == -1) {
+            if (mkdir(parent_dir, 0700) == -1) {
+                perror("Parent directory creation failed");
+            }
+            printf("Parent directory created: %s\n", parent_dir);
+        }
+    }
+    
+    // Now try to create the full path
+    if (stat(new_forest_path, &st) == -1) {
+        if (mkdir(new_forest_path, 0700) == 0) {
+            printf("Directory created: %s\n", new_forest_path);
+        } else {
+            perror("mkdir failed");
+        }
+    }
+}
+
+int check_bin_files_exist(const char *directory_path) {
+    DIR *dir;
+    struct dirent *entry;
+    int found_bin_files = 0;
+    char *extension;
+    
+    // Check if the directory path is valid
+    if (directory_path == NULL) {
+        fprintf(stderr, "Error: Directory path is NULL\n");
+        return -1;
+    }
+    
+    // Open the directory
+    dir = opendir(directory_path);
+    if (dir == NULL) {
+        perror("Error opening directory");
+        return -1;
+    }
+    
+    // Read the directory entries
+    while ((entry = readdir(dir)) != NULL) {
+        // Skip '.' and '..' directories
+        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
+            continue;
+        }
+        
+        // Check for .bin extension
+        extension = strrchr(entry->d_name, '.');
+        if (extension != NULL && strcmp(extension, ".bin") == 0) {
+            found_bin_files = 1;
+            break;
+        }
+    }
+    
+    // Close the directory
+    closedir(dir);
+    
+    return found_bin_files;
 }

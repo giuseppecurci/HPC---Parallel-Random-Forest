@@ -132,5 +132,13 @@ Tree *deserialize_tree(const char *filename);
  * @param filename Path to the output file.
  */
 void save_predictions(const int *predictions, int num_rows, const char *filename);
+void check_dir_existence(const char *new_forest_path);
 
+
+/**
+ * Checks if there are any .bin files in the specified directory
+ * @param directory_path Path to the directory to check
+ * @return 1 if .bin files exist, 0 if not, -1 on error
+ */
+int check_bin_files_exist(const char *directory_path);
 #endif 
