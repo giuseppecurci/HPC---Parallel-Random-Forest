@@ -32,7 +32,7 @@ Node *create_node(int feature, float threshold, Node *left, Node *right, int pre
 };
 
 void grow_tree(Node *parent, float **data, int num_columns, int num_classes, 
-               int max_depth, int min_samples_split, char* max_features) {
+               int max_depth, int min_samples_split, char* max_features, int thread_count) {
     if (parent->num_samples < min_samples_split || parent->depth >= max_depth) {
         return;
     }
@@ -48,7 +48,7 @@ void grow_tree(Node *parent, float **data, int num_columns, int num_classes,
     gettimeofday(&start, NULL);
     BestSplit best_split = find_best_split(data, parent->num_samples, num_columns, num_classes, 
                                            &best_class_pred_left, &best_class_pred_right, 
-                                           &best_size_left, &best_size_right, max_features);
+                                           &best_size_left, &best_size_right, max_features, thread_count);
     gettimeofday(&end, NULL);
     time_find_best_split = (end.tv_sec - start.tv_sec) + (end.tv_usec - start.tv_usec) / 1e6;
     total_time_find_best_split += time_find_best_split;
@@ -72,9 +72,9 @@ void grow_tree(Node *parent, float **data, int num_columns, int num_classes,
     parent->right = create_node(-1, -1, NULL, NULL, best_class_pred_right, parent->depth + 1, INFINITY, best_size_right);
 
     grow_tree(parent->left, left_data, num_columns, num_classes, 
-              max_depth, min_samples_split, max_features);
+              max_depth, min_samples_split, max_features, thread_count);
     grow_tree(parent->right, right_data, num_columns, num_classes, 
-              max_depth, min_samples_split, max_features);  
+              max_depth, min_samples_split, max_features, thread_count);  
     for (int i = 0; i < best_size_left; i++) free(left_data[i]);
     free(left_data);
     for (int i = 0; i < best_size_right; i++) free(right_data[i]);
@@ -82,9 +82,9 @@ void grow_tree(Node *parent, float **data, int num_columns, int num_classes,
 };
 
 void train_tree(Tree *tree, float **data, int num_rows, int num_columns, int num_classes, 
-                int max_depth, int min_samples_split, char* max_features) {
+                int max_depth, int min_samples_split, char* max_features, int thread_count) {
     tree->root = create_node(-1, -1000, NULL, NULL, -1, 0, 1000, num_rows);
-    grow_tree(tree->root, data, num_columns, num_classes, max_depth, min_samples_split, max_features);
+    grow_tree(tree->root, data, num_columns, num_classes, max_depth, min_samples_split, max_features, thread_count);
 };
 
 int* tree_inference(Tree *tree, float **data, int num_rows) {

@@ -58,7 +58,7 @@ void print_array(float *arr, int size, int max_elements) {
 void summary(char* dataset_path, float train_proportion, int train_size, int num_columns,
              int num_classes, int num_trees, int max_depth, int min_samples_split, char* max_features, 
              char* store_predictions_path, char* store_metrics_path, char* new_tree_path, 
-             char* trained_tree_path, int seed) {
+             char* trained_tree_path, int seed, int thread_count) {
         printf("Summary setup:\n");
         printf(" - Dataset: %s\n", dataset_path);
         printf(" - Train/test size: %.2f/%.2f\n", train_proportion, 1-train_proportion);
@@ -77,6 +77,7 @@ void summary(char* dataset_path, float train_proportion, int train_size, int num
         printf(" - Min samples split: %d\n", min_samples_split);
         printf(" - Max features: %s\n", max_features);
         printf(" - Seed: %d\n", seed);
+        printf(" - Thread count: %d\n", thread_count);
         printf("--------------\n");
     };
 
@@ -138,7 +139,7 @@ float** read_csv(const char *filename, int *num_rows, int *num_columns) {
 int parse_arguments(int argc, char *argv[], int *max_matrix_rows_print, int *num_classes, int *num_trees,
                     int *max_depth, int *min_samples_split, char **max_features,
                     char **trained_forest_path, char **store_predictions_path, char **store_metrics_path,
-                    char **new_forest_path, char **dataset_path, float *train_proportion, int *seed) {
+                    char **new_forest_path, char **dataset_path, float *train_proportion, int *seed, int *thread_count) {
 
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--print_matrix") == 0 && i + 1 < argc) {
@@ -181,8 +182,11 @@ int parse_arguments(int argc, char *argv[], int *max_matrix_rows_print, int *num
             *train_proportion = atof(argv[i + 1]);
             if (*train_proportion <= 0 || *train_proportion >= 1) {
                 printf("Train proportion must be between 0 and 1, instead %f was provided.\n", *train_proportion);
-                return 1;  // Return 1 to indicate an error
+                return 1; 
             } 
+        }
+        else if (strcmp(argv[i], "--thread_count") == 0 && i + 1 < argc) {
+            *thread_count = atoi(argv[i + 1]);
         }
     }
 

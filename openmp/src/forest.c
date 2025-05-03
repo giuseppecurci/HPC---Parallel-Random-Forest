@@ -21,12 +21,12 @@ void create_forest(Forest *forest, int num_trees, int max_depth, int min_samples
     }
 }
 
-void train_forest(Forest *forest, float **data, int num_rows, int num_columns, int num_classes) {
+void train_forest(Forest *forest, float **data, int num_rows, int num_columns, int num_classes, int thread_count) {
     for (int i = 0; i < forest->num_trees; i++) {
         printf("\rTraining tree %d/%d... (%d%%)", i + 1, forest->num_trees, (i + 1) * 100 / forest->num_trees);
         fflush(stdout);
         train_tree(&forest->trees[i], data, num_rows, num_columns, num_classes, 
-                   forest->max_depth, forest->min_samples_split, forest->max_features);
+                   forest->max_depth, forest->min_samples_split, forest->max_features, thread_count);
     }
     printf("\n");
 }

@@ -46,6 +46,7 @@ int main(int argc, char *argv[]) {
     int min_samples_split = 2;
     int max_depth = 10;
     int seed = 0;
+    int thread_count = 1;
     
     char *dataset_path = "../data/classification_dataset.csv";  
     int num_rows, num_columns;
@@ -60,7 +61,7 @@ int main(int argc, char *argv[]) {
                                         &max_depth, &min_samples_split, &max_features,
                                         &trained_forest_path, &store_predictions_path,
                                         &store_metrics_path, &new_forest_path, &dataset_path,
-                                        &train_proportion, &seed);
+                                        &train_proportion, &seed, &thread_count);
     if (parse_result != 0) {
         printf("Error parsing arguments. Please check the command line options.\n");
         return 1;
@@ -119,24 +120,18 @@ int main(int argc, char *argv[]) {
 
     summary(dataset_path, train_proportion, train_size, num_columns - 1, num_classes,
             num_trees, max_depth, min_samples_split, max_features, store_predictions_path, 
-            store_metrics_path, new_forest_path, trained_forest_path, seed);
+            store_metrics_path, new_forest_path, trained_forest_path, seed, thread_count);
     
 	Forest *random_forest = (Forest *)malloc(sizeof(Forest));
     create_forest(random_forest, num_trees, max_depth, min_samples_split, max_features);
     
     if (trained_forest_path == NULL){
         gettimeofday(&start_time, NULL);
-        train_forest(random_forest, train_data, train_size, num_columns, num_classes);
+        train_forest(random_forest, train_data, train_size, num_columns, num_classes, thread_count);
         gettimeofday(&end_time, NULL);
         elapsed_time = (end_time.tv_sec - start_time.tv_sec) + 
                    (end_time.tv_usec - start_time.tv_usec) / 1e6;
         printf("\nTime taken to train the forest: %.6f seconds\n", elapsed_time);
-        printf("    'find_best_split': %.6f seconds\n", total_time_find_best_split);
-        printf("        'merge_sort': %.6f seconds\n", total_time_merge_sort);
-        printf("        'best_split_num_var': %.6f seconds\n", total_time_best_split_num_var);
-        printf("            'split_for_entropy': %.6f seconds\n", total_time_split_for_entropy);
-        printf("            'entropy': %.6f seconds\n", total_time_entropy);
-        printf("    'split_data': %.6f seconds\n", total_time_split_data);
         serialize_forest(random_forest, new_forest_path);
     } else {
         printf("Loading tree from %s\n", trained_forest_path);

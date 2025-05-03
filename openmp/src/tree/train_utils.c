@@ -1,7 +1,5 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <time.h>
-#include <sys/time.h>
 #include <string.h>
 #include <math.h>
 
@@ -9,10 +7,9 @@
 #include "../../headers/tree/tree.h"
 #include "../../headers/tree/utils.h"
 
-double total_time_entropy = 0.0;
-double total_time_merge_sort = 0.0;
-double total_time_best_split_num_var = 0.0;
-double total_time_split_for_entropy = 0.0;
+#ifdef _OPENMP
+#include <omp.h>
+#endif
 
 int argmax(int *arr, int size) {
     int max_index = 0;
@@ -120,59 +117,68 @@ float* get_best_split_num_var(
     float *sorted_array, 
     float *target_array, 
     int size, 
-    int num_classes)
+    int num_classes,
+    int thread_count)
     {
         float* best_split = malloc(6 * sizeof(float));
         best_split[0] = INFINITY;  
         best_split[1] = 0.0;
         best_split[2] = best_split[3] = best_split[4] = best_split[5] = -1;
 
-        int left_class_counts[num_classes];
-        int right_class_counts[num_classes];
-        memset(left_class_counts, 0, num_classes * sizeof(int));
-        memset(right_class_counts, 0, num_classes * sizeof(int));
-        
-        struct timeval start_time, end_time;
+        // Allocate per-thread class counts
+        int** left_class_counts_array = malloc(thread_count * sizeof(int*));
+        int** right_class_counts_array = malloc(thread_count * sizeof(int*));
+        for (int t = 0; t < thread_count; t++) {
+            left_class_counts_array[t] = calloc(num_classes, sizeof(int));
+            right_class_counts_array[t] = calloc(num_classes, sizeof(int));
+        }
 
+        #pragma omp parallel for num_threads(thread_count)
         for (int i = 0; i < size - 1; i++)
-        {
-            gettimeofday(&start_time, NULL);
+        {   
+            int tid = omp_get_thread_num();
+
             float avg = (sorted_array[i] + sorted_array[i + 1]) / 2;
             int left_size = i + 1;
             int right_size = size - i - 1; 
 
-            for (int j = 0; j < left_size; j++)
-            {
+            int* left_class_counts = left_class_counts_array[tid];
+            int* right_class_counts = right_class_counts_array[tid];
+            memset(left_class_counts, 0, num_classes * sizeof(int));
+            memset(right_class_counts, 0, num_classes * sizeof(int));
+
+            for (int j = 0; j < left_size; j++) {
                 left_class_counts[(int)target_array[j]]++;
             }
-            for (int j = 0; j < right_size; j++)
-            {
+            for (int j = 0; j < right_size; j++) {
                 right_class_counts[(int)target_array[j + left_size]]++;
             }
-            gettimeofday(&end_time, NULL);
-            double time_split_for_entropy = (end_time.tv_sec - start_time.tv_sec) + (end_time.tv_usec - start_time.tv_usec) / 1e6;
-            total_time_split_for_entropy += time_split_for_entropy;
-
-            gettimeofday(&start_time, NULL);
+        
             float entropy = get_entropy(left_class_counts, right_class_counts, left_size, right_size, num_classes);
-            gettimeofday(&end_time, NULL);
-            double time_entropy = (end_time.tv_sec - start_time.tv_sec) + (end_time.tv_usec - start_time.tv_usec) / 1e6;
-            total_time_entropy += time_entropy;
 
-            if (entropy < best_split[0])
+            #pragma omp critical 
             {
-                best_split[0] = entropy;
-                best_split[1] = avg;
-                best_split[2] = left_size;
-                best_split[3] = right_size;
-                best_split[4] = argmax(left_class_counts, num_classes);
-                best_split[5] = argmax(right_class_counts, num_classes);
-            }
-            for (int j = 0; j < num_classes; j++) {
-                right_class_counts[j] = 0;
-                left_class_counts[j] = 0;
+                if (
+                    (entropy + EPSILON < best_split[0]) || 
+                    (fabs(entropy - best_split[0]) < EPSILON && avg < best_split[1])
+                )
+                {
+                    best_split[0] = entropy;
+                    best_split[1] = avg;
+                    best_split[2] = left_size;
+                    best_split[3] = right_size;
+                    best_split[4] = argmax(left_class_counts, num_classes);
+                    best_split[5] = argmax(right_class_counts, num_classes);
                 }
+            }
         }
+
+        for (int t = 0; t < thread_count; t++) {
+            free(left_class_counts_array[t]);
+            free(right_class_counts_array[t]);
+        }
+        free(left_class_counts_array);
+        free(right_class_counts_array);
 
         return best_split;
     }
@@ -193,7 +199,7 @@ void shuffle(int *array, int size) {
 
 BestSplit find_best_split(float **data, int num_rows, int num_columns, 
                           int num_classes, int *class_pred_left, int *class_pred_right,
-                          int *best_size_left, int *best_size_right, char *max_features) 
+                          int *best_size_left, int *best_size_right, char *max_features, int thread_count) 
                           {
     BestSplit best_split = {INFINITY, 0.0, -1};
     int target_column = num_columns - 1;  // Assuming target column is the last one
@@ -201,8 +207,6 @@ BestSplit find_best_split(float **data, int num_rows, int num_columns,
 	int features_to_consider = num_columns - 1; // Exclude target column
 	int selected_features[features_to_consider]; // contains the indices of columns to consider
 	int num_selected_features = 0;
-
-    struct timeval start_time, end_time;
 
 	// Handle different max_features scenarios
 	if (strcmp(max_features, "sqrt") == 0) {
@@ -243,20 +247,11 @@ BestSplit find_best_split(float **data, int num_rows, int num_columns,
         }
 
         // Sort the feature and target values together
-        gettimeofday(&start_time, NULL);
         merge_sort(feature_values, target_values, num_rows);
-        gettimeofday(&end_time, NULL);
-        double time_merge_sort = (end_time.tv_sec - start_time.tv_sec) + 
-                         (end_time.tv_usec - start_time.tv_usec) / 1e6;
-        total_time_merge_sort += time_merge_sort;
-
+        
         // Find best split for this feature
-        gettimeofday(&start_time, NULL);
-        float *feature_best_split = get_best_split_num_var(feature_values, target_values, num_rows, num_classes);
-        gettimeofday(&end_time, NULL);
-        double time_best_split_num_var = (end_time.tv_sec - start_time.tv_sec) + 
-                         (end_time.tv_usec - start_time.tv_usec) / 1e6;
-        total_time_best_split_num_var += time_best_split_num_var;
+        float *feature_best_split = get_best_split_num_var(feature_values, target_values, num_rows, num_classes, thread_count);
+        
         // Update the global best split if a lower entropy is found
         if (feature_best_split[0] < best_split.entropy) {
             best_split.entropy = feature_best_split[0];

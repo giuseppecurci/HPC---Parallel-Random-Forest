@@ -10,6 +10,8 @@
 #ifndef TRAIN_TREE_H
 #define TRAIN_TREE_H
 
+#define EPSILON 1e-9
+
 #include "tree.h"
 
 typedef struct {
@@ -84,7 +86,7 @@ float get_entropy(int *left_class_counts, int *right_class_counts, int left_size
  * @return An array containing the best split's entropy, threshold, sizes of left and right splits,
  *         and the predicted class for each side.
  */
-float* get_best_split_num_var(float *sorted_array, float *target_array, int size, int num_classes);
+float* get_best_split_num_var(float *sorted_array, float *target_array, int size, int num_classes, int thread_count);
 
 /**
  * @brief Finds the best split for all features in the dataset.
@@ -103,9 +105,9 @@ float* get_best_split_num_var(float *sorted_array, float *target_array, int size
  * @param best_size_right Pointer to store the size of the right split.
  * @return The best split found, containing entropy, threshold, and other split parameters.
  */
-BestSplit find_best_split(float **data, int num_rows, int num_columns, int num_classes, 
-                          int *class_pred_left, int *class_pred_right, int *best_size_left, 
-                          int *best_size_right, char* max_features);
+BestSplit find_best_split(float **data, int num_rows, int num_columns, 
+                          int num_classes, int *class_pred_left, int *class_pred_right,
+                          int *best_size_left, int *best_size_right, char *max_features, int thread_count);
 
 /**
  * @brief Splits the dataset into left and right subarrays based on a threshold.

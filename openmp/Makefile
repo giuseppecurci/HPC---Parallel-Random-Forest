@@ -1,6 +1,6 @@
 # === CONFIG ===
 CC = gcc
-FLAGS = -g -Wall -Wextra
+FLAGS = -g -Wall -Wextra -fopenmp
 HEADERS = headers
 SOURCE = src
 EXEC = final

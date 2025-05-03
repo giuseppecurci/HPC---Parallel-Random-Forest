@@ -9,13 +9,6 @@
 #ifndef TREE_H
 #define TREE_H
 
-extern double total_time_find_best_split;  
-extern double total_time_best_split_num_var;
-extern double total_time_split_for_entropy;
-extern double total_time_split_data;       
-extern double total_time_entropy;
-extern double total_time_merge_sort;
-
 /**
  * @struct Node
  * @brief Represents a node in the decision tree.
@@ -86,7 +79,7 @@ Node *create_node(int feature, float threshold, Node *left, Node *right,
  * @return None
  */
 void grow_tree(Node *parent, float **data, int num_columns, int num_classes, 
-               int max_depth, int min_samples_split, char* max_features);
+               int max_depth, int min_samples_split, char* max_features, int thread_count);
 
 /**
  * @brief Trains a decision tree using the provided data.
@@ -105,7 +98,7 @@ void grow_tree(Node *parent, float **data, int num_columns, int num_classes,
  * @param max_features  The number of features to consider when looking for the best split.
  */
 void train_tree(Tree *tree, float **data, int num_rows, int num_columns, int num_classes, 
-                int max_depth, int min_samples_split, char* max_features);
+                int max_depth, int min_samples_split, char* max_features, int thread_count);
 
 /**
  * @brief Performs inference on a set of data using the trained decision tree.
