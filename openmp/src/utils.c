@@ -321,12 +321,21 @@ void store_run_params(char* csv_store_time_metrics_path, float time, int num_tre
     // Write header if file is new
     if (!file_exists) {
         fprintf(file, "Time,Threads,Num Trees,Data Size,Speedup,Efficiency\n");
+    } else {
+        // Ensure previous line ends with newline
+        fseek(file, -1, SEEK_END);
+        int last_char = fgetc(file);
+        if (last_char != '\n') {
+            fputc('\n', file);
+        }
     }
 
     if (speedup > 0 && efficiency > 0) {
         fprintf(file, "%.6f,%d,%d,%d,%.3f,%.3f\n", time, thread_count, num_trees, train_size, speedup, efficiency);
+    } else if (thread_count == 1) {
+        fprintf(file, "%.6f,%d,%d,%d,%.3f,%.3f\n", time, thread_count, num_trees, train_size, 1.0f, 1.0f);
     } else {
-        fprintf(file, "%.6f,%d,%d,%d,%d,%d\n", time, thread_count, num_trees, train_size, 1, 1);
+        fprintf(file, "%.6f,%d,%d,%d,%d,%d\n", time, thread_count, num_trees, train_size, 0.0, 0.0);
     }
 
     fclose(file);

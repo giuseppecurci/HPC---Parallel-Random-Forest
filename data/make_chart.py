@@ -5,7 +5,7 @@ import os
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Generate charts from CSV data.")
-    parser.add_argument("--program_version", type=str, help="Path to the CSV file containing time metrics.")
+    parser.add_argument("--program_version", type=str, required=True, help="Path to the CSV file containing time metrics.")
     return parser.parse_args()
 
 if __name__ == "__main__":
@@ -19,34 +19,36 @@ if __name__ == "__main__":
 
     df = pd.read_csv(metrics_path)
 
-    # Group by data size
-    grouped = df.groupby("Data Size")
+    # Group by both Data Size and Num Trees
+    grouped = df.groupby(["Data Size", "Num Trees"])
 
     # Plot Speedup
     plt.figure(figsize=(10, 6))
-    for data_size, group in grouped:
-        plt.plot(group["Threads"], group["Speedup"], label=f"Data Size: {data_size}")
+    for (data_size, num_trees), group in grouped:
+        data_size = round(data_size/1000000, 3)
+        plt.plot(group["Threads"], group["Speedup"], label=f"{data_size}M - {num_trees}")
     plt.title("Speedup vs Threads")
     plt.xlim(1)
     plt.ylim(1)
     plt.xlabel("Threads")
     plt.ylabel("Speedup")
     plt.grid(True, linestyle="--", alpha=0.6)
-    plt.legend()
+    plt.legend(title="Data Size - Num Trees")
     plt.tight_layout()
     plt.savefig(speedup_path)
 
     # Plot Efficiency
     plt.figure(figsize=(10, 6))
-    for data_size, group in grouped:
-        plt.plot(group["Threads"], group["Efficiency"], label=f"Data Size: {data_size}")
+    for (data_size, num_trees), group in grouped:
+        data_size = round(data_size/1000000, 3)
+        plt.plot(group["Threads"], group["Efficiency"], label=f"{data_size}M - {num_trees}")
     plt.title("Efficiency vs Threads")
     plt.xlim(1)
     plt.ylim(0, 1)
     plt.xlabel("Threads")
     plt.ylabel("Efficiency")
     plt.grid(True, linestyle="--", alpha=0.6)
-    plt.legend()
+    plt.legend(title="Data Size - Num Trees")
     plt.tight_layout()
     plt.savefig(efficiency_path)
 
