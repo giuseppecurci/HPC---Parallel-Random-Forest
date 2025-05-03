@@ -127,4 +127,6 @@ void summary(char* dataset_path, float train_proportion, int train_size, int num
              int num_classes, int num_trees, int max_depth, int min_samples_split, char* max_features, 
              char* store_predictions_path, char* store_metrics_path, char* new_tree_path, 
              char* trained_tree_path, int seed, int thread_count);
+
+void store_run_params(char* csv_store_time_metrics_path, float time, int num_trees, int train_size, int thread_count);
 #endif

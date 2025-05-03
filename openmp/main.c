@@ -40,6 +40,7 @@ int main(int argc, char *argv[]) {
     char *trained_forest_path = NULL; 
     char *store_predictions_path = "output/predictions.csv"; 
     char *store_metrics_path = "output/metrics_output.txt"; 
+    char *csv_store_time_metrics_path = "output/store_time_metrics.csv";
     float train_proportion = 0.8;
     int num_trees = 10;
     char* max_features = "sqrt";
@@ -54,7 +55,7 @@ int main(int argc, char *argv[]) {
     int train_size, test_size;
 
     struct timeval start_time, end_time;
-    double elapsed_time;
+    double train_time;
     
     // Parse command-line arguments
     int parse_result = parse_arguments(argc, argv, &max_matrix_rows_print, &num_classes, &num_trees,
@@ -129,9 +130,11 @@ int main(int argc, char *argv[]) {
         gettimeofday(&start_time, NULL);
         train_forest(random_forest, train_data, train_size, num_columns, num_classes, thread_count);
         gettimeofday(&end_time, NULL);
-        elapsed_time = (end_time.tv_sec - start_time.tv_sec) + 
+        train_time = (end_time.tv_sec - start_time.tv_sec) + 
                    (end_time.tv_usec - start_time.tv_usec) / 1e6;
-        printf("\nTime taken to train the forest: %.6f seconds\n", elapsed_time);
+        printf("\nTime taken to train the forest: %.6f seconds\n", train_time);
+        int data_size = train_size * num_columns;
+        store_run_params(csv_store_time_metrics_path, train_time, num_trees, data_size, thread_count);
         serialize_forest(random_forest, new_forest_path);
     } else {
         printf("Loading tree from %s\n", trained_forest_path);

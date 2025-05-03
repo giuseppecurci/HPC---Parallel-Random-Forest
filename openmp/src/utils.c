@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 #include "../headers/utils.h"
 
 void print_matrix(float **data, int num_rows, int num_columns, int max_rows) {
@@ -279,4 +280,54 @@ void stratified_split(float **data, int num_rows, int num_columns, int num_class
         free(class_indices[i]);
     }
     free(class_indices);
+}
+
+void store_run_params(char* csv_store_time_metrics_path, float time, int num_trees, int train_size, int thread_count) {
+    struct stat buffer;
+    int file_exists = (stat(csv_store_time_metrics_path, &buffer) == 0);
+
+    float speedup = -1.0f;
+    float efficiency = -1.0f;
+
+    // If thread_count > 1, try to find the matching serial time
+    if (thread_count > 1 && file_exists) {
+        FILE *read_file = fopen(csv_store_time_metrics_path, "r");
+        if (read_file != NULL) {
+            char line[256];
+            // Skip header
+            fgets(line, sizeof(line), read_file);
+            while (fgets(line, sizeof(line), read_file)) {
+                float recorded_time;
+                int recorded_threads, recorded_trees, recorded_data_size;
+                int parsed = sscanf(line, "%f,%d,%d,%d", &recorded_time, &recorded_threads, &recorded_trees, &recorded_data_size);
+                if (parsed >= 4 && recorded_threads == 1 &&
+                    recorded_trees == num_trees &&
+                    recorded_data_size == train_size) {
+                        speedup = recorded_time / time;
+                        efficiency = speedup / thread_count;
+                        break;
+                }
+            }
+            fclose(read_file);
+        }
+    }
+
+    FILE *file = fopen(csv_store_time_metrics_path, "a");
+    if (file == NULL) {
+        perror("Error opening file for appending time metrics");
+        return;
+    }
+
+    // Write header if file is new
+    if (!file_exists) {
+        fprintf(file, "Time,Threads,Num Trees,Data Size,Speedup,Efficiency\n");
+    }
+
+    if (speedup > 0 && efficiency > 0) {
+        fprintf(file, "%.6f,%d,%d,%d,%.3f,%.3f\n", time, thread_count, num_trees, train_size, speedup, efficiency);
+    } else {
+        fprintf(file, "%.6f,%d,%d,%d,%d,%d\n", time, thread_count, num_trees, train_size, 1, 1);
+    }
+
+    fclose(file);
 }
