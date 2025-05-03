@@ -1,11 +1,18 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include <sys/time.h>
 #include <string.h>
 #include <math.h>
+
 #include "../../headers/tree/train_utils.h" 
 #include "../../headers/tree/tree.h"
 #include "../../headers/tree/utils.h"
+
+double total_time_entropy = 0.0;
+double total_time_merge_sort = 0.0;
+double total_time_best_split_num_var = 0.0;
+double total_time_split_for_entropy = 0.0;
 
 int argmax(int *arr, int size) {
     int max_index = 0;
@@ -144,8 +151,11 @@ float* get_best_split_num_var(
         memset(left_class_counts, 0, num_classes * sizeof(int));
         memset(right_class_counts, 0, num_classes * sizeof(int));
         
+        struct timeval start_time, end_time;
+
         for (int i = 0; i < size - 1; i++)
         {
+            gettimeofday(&start_time, NULL);
             float avg = (sorted_array[i] + sorted_array[i + 1]) / 2;
             int left_size = i + 1;
             int right_size = size - i - 1; 
@@ -162,8 +172,16 @@ float* get_best_split_num_var(
                 right_split[j] = target_array[j + left_size];
                 right_class_counts[(int)target_array[j + left_size]]++;
             }
+            gettimeofday(&end_time, NULL);
+            double time_split_for_entropy = (end_time.tv_sec - start_time.tv_sec) + (end_time.tv_usec - start_time.tv_usec) / 1e6;
+            total_time_split_for_entropy += time_split_for_entropy;
 
+            gettimeofday(&start_time, NULL);
             float entropy = get_entropy(left_split, right_split, left_size, right_size, num_classes);
+            gettimeofday(&end_time, NULL);
+            double time_entropy = (end_time.tv_sec - start_time.tv_sec) + (end_time.tv_usec - start_time.tv_usec) / 1e6;
+            total_time_entropy += time_entropy;
+
             if (entropy < best_split[0])
             {
                 best_split[0] = entropy;
@@ -209,6 +227,8 @@ BestSplit find_best_split(float **data, int num_rows, int num_columns,
 	int selected_features[features_to_consider]; // contains the indices of columns to consider
 	int num_selected_features = 0;
 
+    struct timeval start_time, end_time;
+
 	// Handle different max_features scenarios
 	if (strcmp(max_features, "sqrt") == 0) {
     	num_selected_features = (int) sqrt(features_to_consider);
@@ -248,10 +268,20 @@ BestSplit find_best_split(float **data, int num_rows, int num_columns,
         }
 
         // Sort the feature and target values together
+        gettimeofday(&start_time, NULL);
         merge_sort(feature_values, target_values, num_rows);
+        gettimeofday(&end_time, NULL);
+        double time_merge_sort = (end_time.tv_sec - start_time.tv_sec) + 
+                         (end_time.tv_usec - start_time.tv_usec) / 1e6;
+        total_time_merge_sort += time_merge_sort;
 
         // Find best split for this feature
+        gettimeofday(&start_time, NULL);
         float *feature_best_split = get_best_split_num_var(feature_values, target_values, num_rows, num_classes);
+        gettimeofday(&end_time, NULL);
+        double time_best_split_num_var = (end_time.tv_sec - start_time.tv_sec) + 
+                         (end_time.tv_usec - start_time.tv_usec) / 1e6;
+        total_time_best_split_num_var += time_best_split_num_var;
         // Update the global best split if a lower entropy is found
         if (feature_best_split[0] < best_split.entropy) {
             best_split.entropy = feature_best_split[0];

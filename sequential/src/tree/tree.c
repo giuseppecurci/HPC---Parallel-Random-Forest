@@ -10,8 +10,13 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
+#include <sys/time.h>
+
 #include "../../headers/tree/tree.h"
 #include "../../headers/tree/train_utils.h"
+
+double total_time_find_best_split = 0.0;
+double total_time_split_data = 0.0;
 
 Node *create_node(int feature, float threshold, Node *left, Node *right, int pred, int depth, float entropy, int num_samples) {
     Node *node = (Node *)malloc(sizeof(Node));
@@ -32,13 +37,21 @@ void grow_tree(Node *parent, float **data, int num_columns, int num_classes,
         return;
     }
     
+    struct timeval start, end;
+    double time_find_best_split = 0.0;
+    double time_split_data = 0.0;
+
     int best_size_left = 0;
     int best_size_right = 0;
     int best_class_pred_left = -1;
     int best_class_pred_right = -1;
+    gettimeofday(&start, NULL);
     BestSplit best_split = find_best_split(data, parent->num_samples, num_columns, num_classes, 
                                            &best_class_pred_left, &best_class_pred_right, 
                                            &best_size_left, &best_size_right, max_features);
+    gettimeofday(&end, NULL);
+    time_find_best_split = (end.tv_sec - start.tv_sec) + (end.tv_usec - start.tv_usec) / 1e6;
+    total_time_find_best_split += time_find_best_split;
     if (best_split.entropy > parent->entropy){
         return;
     }
@@ -46,8 +59,12 @@ void grow_tree(Node *parent, float **data, int num_columns, int num_classes,
     float** left_data = (float **)malloc(best_size_left * sizeof(float *));
     float** right_data = (float **)malloc(best_size_right * sizeof(float *));
 
+    gettimeofday(&start, NULL);
     split_data(data, left_data, right_data, parent->num_samples, num_columns, best_split.feature_index, best_split.threshold);
-    
+    gettimeofday(&end, NULL);
+    time_split_data = (end.tv_sec - start.tv_sec) + (end.tv_usec - start.tv_usec) / 1e6;
+    total_time_split_data += time_split_data;
+
     parent->feature = best_split.feature_index;
     parent->threshold = best_split.threshold;
     parent->entropy = best_split.entropy;

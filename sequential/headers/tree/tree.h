@@ -9,6 +9,12 @@
 #ifndef TREE_H
 #define TREE_H
 
+extern double total_time_find_best_split;  
+extern double total_time_best_split_num_var;
+extern double total_time_split_for_entropy;
+extern double total_time_split_data;       
+extern double total_time_entropy;
+extern double total_time_merge_sort;
 
 /**
  * @struct Node

@@ -23,6 +23,7 @@
 #include <errno.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/time.h>
 
 #include "headers/utils.h"
 #include "headers/metrics.h"
@@ -50,6 +51,9 @@ int main(int argc, char *argv[]) {
     int num_rows, num_columns;
     float **train_data, **test_data;
     int train_size, test_size;
+
+    struct timeval start_time, end_time;
+    double elapsed_time;
     
     // Parse command-line arguments
     int parse_result = parse_arguments(argc, argv, &max_matrix_rows_print, &num_classes, &num_trees,
@@ -119,8 +123,20 @@ int main(int argc, char *argv[]) {
     
 	Forest *random_forest = (Forest *)malloc(sizeof(Forest));
     create_forest(random_forest, num_trees, max_depth, min_samples_split, max_features);
+    
     if (trained_forest_path == NULL){
+        gettimeofday(&start_time, NULL);
         train_forest(random_forest, train_data, train_size, num_columns, num_classes);
+        gettimeofday(&end_time, NULL);
+        elapsed_time = (end_time.tv_sec - start_time.tv_sec) + 
+                   (end_time.tv_usec - start_time.tv_usec) / 1e6;
+        printf("\nTime taken to train the forest: %.6f seconds\n", elapsed_time);
+        printf("    'find_best_split': %.6f seconds\n", total_time_find_best_split);
+        printf("        'merge_sort': %.6f seconds\n", total_time_merge_sort);
+        printf("        'best_split_num_var': %.6f seconds\n", total_time_best_split_num_var);
+        printf("            'split_for_entropy': %.6f seconds\n", total_time_split_for_entropy);
+        printf("            'entropy': %.6f seconds\n", total_time_entropy);
+        printf("    'split_data': %.6f seconds\n", total_time_split_data);
         serialize_forest(random_forest, new_forest_path);
     } else {
         printf("Loading tree from %s\n", trained_forest_path);
