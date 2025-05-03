@@ -133,4 +133,4 @@ void split_data(float** data, float** left_data, float** right_data, int num_row
  *
  */
 void shuffle(int *array, int size);
-#endif
+#endif 
