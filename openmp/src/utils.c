@@ -295,48 +295,42 @@ void stratified_split(float **data, int num_rows, int num_columns, int num_class
 }
 
 void sample_data_without_replacement(float **train_data, int train_size, int num_columns, 
-                                   int sample_size, float **sampled_data) {
+                                   int sample_size, float **sampled_data, int seed) {
     if (train_data == NULL || sampled_data == NULL || train_size <= 0 || 
-        num_columns <= 0) {
+        num_columns <= 0 || sample_size > train_size) {
         fprintf(stderr, "Invalid parameters for data sampling\n");
         exit(1);
     }
-    
-    // Allocate array for sampled indices
-    int *sampled_indices = (int *)malloc(sample_size * sizeof(int));
-    if (sampled_indices == NULL) {
-        fprintf(stderr, "Failed to allocate memory for sampled indices\n");
+
+    // Create and initialize an array of indices
+    int *indices = (int *)malloc(train_size * sizeof(int));
+    if (indices == NULL) {
+        fprintf(stderr, "Failed to allocate memory for indices\n");
         exit(1);
     }
-    
-    // Random sampling without replacement
-    for (int i = 0; i < sample_size; i++) {
-        int idx;
-        int unique;
-        do {
-            unique = 1;
-            idx = rand() % train_size;
-            // Check if idx was already chosen
-            for (int j = 0; j < i; j++) {
-                if (sampled_indices[j] == idx) {
-                    unique = 0;
-                    break;
-                }
-            }
-        } while (!unique);
-        sampled_indices[i] = idx;
+
+    for (int i = 0; i < train_size; i++) {
+        indices[i] = i;
     }
-    
-    // Fill the sampled data buffer
+
+    // Shuffle the indices using Fisher-Yates shuffle
+    srand(seed);
+    for (int i = train_size - 1; i > 0; i--) {
+        int j = rand() % (i + 1);
+        int temp = indices[i];
+        indices[i] = indices[j];
+        indices[j] = temp;
+    }
+
+    // Copy the first sample_size rows
     for (int i = 0; i < sample_size; i++) {
-        int original_row = sampled_indices[i];
+        int original_row = indices[i];
         for (int j = 0; j < num_columns; j++) {
             sampled_data[i][j] = train_data[original_row][j];
         }
     }
-    
-    // Free temporary buffer
-    free(sampled_indices);
+
+    free(indices);
 };
 
 void store_run_params(char* csv_store_time_metrics_path, float train_time, float inference_time, int num_trees, int train_size, int thread_count) {

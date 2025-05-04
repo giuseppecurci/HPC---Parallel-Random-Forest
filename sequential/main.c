@@ -129,7 +129,7 @@ int main(int argc, char *argv[]) {
     
     if (trained_forest_path == NULL){
         gettimeofday(&start_time, NULL);
-        train_forest(random_forest, train_data, train_size, num_columns, train_tree_size, num_classes);
+        train_forest(random_forest, train_data, train_size, num_columns, train_tree_size, num_classes, seed);
         gettimeofday(&end_time, NULL);
         train_time = (end_time.tv_sec - start_time.tv_sec) + 
                    (end_time.tv_usec - start_time.tv_usec) / 1e6;

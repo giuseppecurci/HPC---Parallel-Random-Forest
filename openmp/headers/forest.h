@@ -51,8 +51,9 @@ void create_forest(Forest *forest, int num_trees, int max_depth, int min_samples
  * @param train_tree_size Number of samples to use for training each tree.
  * @param num_classes Total number of classes.
  * @param thread_count Number of threads to use for parallel processing.
+ * @param seed Random seed for reproducibility.
  */
-void train_forest(Forest *forest, float **data, int num_rows, int num_columns, int train_tree_size, int num_classes, int thread_count);
+void train_forest(Forest *forest, float **data, int num_rows, int num_columns, int train_tree_size, int num_classes, int seed, int thread_count);
 
 /**
  * @brief Performs inference on the provided dataset using the trained random forest.

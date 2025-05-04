@@ -24,7 +24,7 @@ void create_forest(Forest *forest, int num_trees, int max_depth, int min_samples
     }
 }
 
-void train_forest(Forest *forest, float **data, int num_rows, int num_columns, int train_tree_size, int num_classes) {
+void train_forest(Forest *forest, float **data, int num_rows, int num_columns, int train_tree_size, int num_classes, int seed) {
     struct timeval start_time, end_time;
     
     gettimeofday(&start_time, NULL);
@@ -39,14 +39,14 @@ void train_forest(Forest *forest, float **data, int num_rows, int num_columns, i
     for (int i = 0; i < forest->num_trees; i++) {
         printf("\rTraining tree %d/%d... (%d%%)", i + 1, forest->num_trees, (i + 1) * 100 / forest->num_trees);
         fflush(stdout);
-        if (train_tree_size != num_rows) {
+        if (num_rows != train_tree_size) {
             gettimeofday(&start_time, NULL);
-            sample_data_without_replacement(data, num_rows, num_columns, train_tree_size, sampled_data);
+            sample_data_without_replacement(data, num_rows, num_columns, train_tree_size, sampled_data, seed);
             gettimeofday(&end_time, NULL);
             total_time_sampling_data += (end_time.tv_sec - start_time.tv_sec) + 
                                         (end_time.tv_usec - start_time.tv_usec) / 1e6;
             train_tree(&forest->trees[i], sampled_data, train_tree_size, num_columns, num_classes, 
-                   forest->max_depth, forest->min_samples_split, forest->max_features);    
+                   forest->max_depth, forest->min_samples_split, forest->max_features);   
         }
         else {
             train_tree(&forest->trees[i], data, num_rows, num_columns, num_classes, 
@@ -61,7 +61,7 @@ void train_forest(Forest *forest, float **data, int num_rows, int num_columns, i
     free(sampled_data);
     gettimeofday(&end_time, NULL);
     total_time_sampling_data += (end_time.tv_sec - start_time.tv_sec) + 
-                                (end_time.tv_usec - start_time.tv_usec) / 1e6;
+                                (end_time.tv_usec - start_time.tv_usec) / 1e6; 
 
     printf("\n");
 }

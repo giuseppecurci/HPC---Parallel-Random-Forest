@@ -86,10 +86,11 @@ void stratified_split(float **data, int num_rows, int num_columns, int num_class
  * @param num_columns Number of features per sample
  * @param sample_size Number fo samples to sample
  * @param sampled_data Output buffer for the sampled data (must be pre-allocated)
+ * @param seed Random seed for reproducibility
  * @return Returns 0 on success, non-zero on failure
  */
 void sample_data_without_replacement(float **train_data, int train_size, int num_columns, 
-                                   int sample_size, float **sampled_data);
+                                   int sample_size, float **sampled_data, int seed);
 
 /**
  * @brief Parses command-line arguments for various options.

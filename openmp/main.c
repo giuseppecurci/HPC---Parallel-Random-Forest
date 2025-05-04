@@ -135,7 +135,7 @@ int main(int argc, char *argv[]) {
     
     if (trained_forest_path == NULL){
         start_time = omp_get_wtime();
-        train_forest(random_forest, train_data, train_size, num_columns, train_tree_size, num_classes, thread_count);
+        train_forest(random_forest, train_data, train_size, num_columns, train_tree_size, num_classes, seed, thread_count);
         end_time = omp_get_wtime();
         train_time = end_time - start_time;
         serialize_forest(random_forest, new_forest_path);

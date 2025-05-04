@@ -21,28 +21,32 @@ void create_forest(Forest *forest, int num_trees, int max_depth, int min_samples
     }
 }
 
-void train_forest(Forest *forest, float **data, int num_rows, int num_columns, int train_tree_size, int num_classes, int thread_count) {
+void train_forest(Forest *forest, float **data, int num_rows, int num_columns, int train_tree_size, int num_classes, int seed, int thread_count) {
+    
+    float ** sampled_data = (float **)malloc(train_tree_size * sizeof(float *));
+    for (int j = 0; j < train_tree_size; j++) {
+        sampled_data[j] = (float *)malloc(num_columns * sizeof(float));
+    }
+    
     for (int i = 0; i < forest->num_trees; i++) {
         printf("\rTraining tree %d/%d... (%d%%)", i + 1, forest->num_trees, (i + 1) * 100 / forest->num_trees);
         fflush(stdout);
         if (train_tree_size != num_rows) {
-            float ** sampled_data = (float **)malloc(train_tree_size * sizeof(float *));
-            for (int j = 0; j < train_tree_size; j++) {
-                sampled_data[j] = (float *)malloc(num_columns * sizeof(float));
-            }
-            sample_data_without_replacement(data, num_rows, num_columns, train_tree_size, sampled_data);
+            sample_data_without_replacement(data, num_rows, num_columns, train_tree_size, sampled_data, seed);
             train_tree(&forest->trees[i], sampled_data, train_tree_size, num_columns, num_classes, 
-                   forest->max_depth, forest->min_samples_split, forest->max_features, thread_count);  
-            for (int j = 0; j < train_tree_size; j++) {
-                free(sampled_data[j]);
-            }
-            free(sampled_data);  
+                   forest->max_depth, forest->min_samples_split, forest->max_features, thread_count);    
         }
         else {
             train_tree(&forest->trees[i], data, num_rows, num_columns, num_classes, 
                    forest->max_depth, forest->min_samples_split, forest->max_features, thread_count);
         }
     }
+
+    for (int j = 0; j < train_tree_size; j++) {
+        free(sampled_data[j]);
+    }
+    free(sampled_data);
+
     printf("\n");
 }
 

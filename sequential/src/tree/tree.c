@@ -14,6 +14,7 @@
 
 #include "../../headers/tree/tree.h"
 #include "../../headers/tree/train_utils.h"
+#include "../../headers/utils.h"
 
 double total_time_find_best_split = 0.0;
 double total_time_split_data = 0.0;
