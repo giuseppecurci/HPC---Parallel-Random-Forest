@@ -138,7 +138,6 @@ int main(int argc, char *argv[]) {
         train_forest(random_forest, train_data, train_size, num_columns, train_tree_size, num_classes, thread_count);
         end_time = omp_get_wtime();
         train_time = end_time - start_time;
-        printf("Time taken to train the forest: %.6f seconds\n", train_time);
         serialize_forest(random_forest, new_forest_path);
     } else {
         printf("Loading tree from %s\n", trained_forest_path);
@@ -159,6 +158,11 @@ int main(int argc, char *argv[]) {
     int tree_data_size = train_size * num_columns * train_proportion;
     store_run_params(csv_store_time_metrics_path, train_time, inference_time, num_trees, tree_data_size, thread_count);
     
+    printf("Timing:\n");
+    printf("  -Training: %.6f seconds\n", train_time);
+    printf("  -Inference: %.6f seconds\n", inference_time);
+    printf("  -Total time: %.6f seconds\n", train_time + inference_time);
+
     // Free allocated memory
     free_forest(random_forest);
     for (int i = 0; i < MAX_ROWS; i++) free(data[i]);

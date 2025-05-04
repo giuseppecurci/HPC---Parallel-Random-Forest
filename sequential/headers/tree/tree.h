@@ -15,6 +15,7 @@ extern double total_time_split_for_entropy;
 extern double total_time_split_data;       
 extern double total_time_entropy;
 extern double total_time_merge_sort;
+extern double total_time_sampling_data;
 
 /**
  * @struct Node

@@ -153,6 +153,7 @@ int main(int argc, char *argv[]) {
     compute_metrics(predictions, targets, test_size, num_classes, store_metrics_path);
 
     printf("\nTime taken to train the forest: %.6f seconds\n", train_time);
+    printf("    'time_sampling_data for trees': %.6f seconds\n", total_time_sampling_data);
     printf("    'find_best_split': %.6f seconds\n", total_time_find_best_split);
     printf("        'merge_sort': %.6f seconds\n", total_time_merge_sort);
     printf("        'best_split_num_var': %.6f seconds\n", total_time_best_split_num_var);
