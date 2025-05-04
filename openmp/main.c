@@ -155,7 +155,7 @@ int main(int argc, char *argv[]) {
     inference_time = end_time - start_time;
     save_predictions(predictions, test_size, store_predictions_path);
     compute_metrics(predictions, targets, test_size, num_classes, store_metrics_path);
-    int tree_data_size = train_size * num_columns * train_proportion;
+    int tree_data_size = (int)(train_size * train_tree_proportion) * num_columns;
     store_run_params(csv_store_time_metrics_path, train_time, inference_time, num_trees, tree_data_size, thread_count);
     
     printf("Timing:\n");
