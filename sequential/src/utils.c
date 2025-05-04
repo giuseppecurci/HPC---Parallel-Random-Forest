@@ -284,3 +284,48 @@ void stratified_split(float **data, int num_rows, int num_columns, int num_class
     }
     free(class_indices);
 }
+
+void sample_data_without_replacement(float **train_data, int train_size, int num_columns, 
+                                   int sample_size, float **sampled_data) {
+    if (train_data == NULL || sampled_data == NULL || train_size <= 0 || 
+        num_columns <= 0) {
+        fprintf(stderr, "Invalid parameters for data sampling\n");
+        exit(1);
+    }
+    
+    // Allocate array for sampled indices
+    int *sampled_indices = (int *)malloc(sample_size * sizeof(int));
+    if (sampled_indices == NULL) {
+        fprintf(stderr, "Failed to allocate memory for sampled indices\n");
+        exit(1);
+    }
+    
+    // Random sampling without replacement
+    for (int i = 0; i < sample_size; i++) {
+        int idx;
+        int unique;
+        do {
+            unique = 1;
+            idx = rand() % train_size;
+            // Check if idx was already chosen
+            for (int j = 0; j < i; j++) {
+                if (sampled_indices[j] == idx) {
+                    unique = 0;
+                    break;
+                }
+            }
+        } while (!unique);
+        sampled_indices[i] = idx;
+    }
+    
+    // Fill the sampled data buffer
+    for (int i = 0; i < sample_size; i++) {
+        int original_row = sampled_indices[i];
+        for (int j = 0; j < num_columns; j++) {
+            sampled_data[i][j] = train_data[original_row][j];
+        }
+    }
+    
+    // Free temporary buffer
+    free(sampled_indices);
+};

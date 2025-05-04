@@ -294,12 +294,58 @@ void stratified_split(float **data, int num_rows, int num_columns, int num_class
     free(class_indices);
 }
 
-void store_run_params(char* csv_store_time_metrics_path, float time, int num_trees, int train_size, int thread_count) {
+void sample_data_without_replacement(float **train_data, int train_size, int num_columns, 
+                                   int sample_size, float **sampled_data) {
+    if (train_data == NULL || sampled_data == NULL || train_size <= 0 || 
+        num_columns <= 0) {
+        fprintf(stderr, "Invalid parameters for data sampling\n");
+        exit(1);
+    }
+    
+    // Allocate array for sampled indices
+    int *sampled_indices = (int *)malloc(sample_size * sizeof(int));
+    if (sampled_indices == NULL) {
+        fprintf(stderr, "Failed to allocate memory for sampled indices\n");
+        exit(1);
+    }
+    
+    // Random sampling without replacement
+    for (int i = 0; i < sample_size; i++) {
+        int idx;
+        int unique;
+        do {
+            unique = 1;
+            idx = rand() % train_size;
+            // Check if idx was already chosen
+            for (int j = 0; j < i; j++) {
+                if (sampled_indices[j] == idx) {
+                    unique = 0;
+                    break;
+                }
+            }
+        } while (!unique);
+        sampled_indices[i] = idx;
+    }
+    
+    // Fill the sampled data buffer
+    for (int i = 0; i < sample_size; i++) {
+        int original_row = sampled_indices[i];
+        for (int j = 0; j < num_columns; j++) {
+            sampled_data[i][j] = train_data[original_row][j];
+        }
+    }
+    
+    // Free temporary buffer
+    free(sampled_indices);
+};
+
+void store_run_params(char* csv_store_time_metrics_path, float train_time, float inference_time, int num_trees, int train_size, int thread_count) {
     struct stat buffer;
     int file_exists = (stat(csv_store_time_metrics_path, &buffer) == 0);
 
     float speedup = -1.0f;
     float efficiency = -1.0f;
+    float total_time = train_time + inference_time;
 
     // If thread_count > 1, try to find the matching serial time
     if (thread_count > 1 && file_exists) {
@@ -315,7 +361,7 @@ void store_run_params(char* csv_store_time_metrics_path, float time, int num_tre
                 if (parsed >= 4 && recorded_threads == 1 &&
                     recorded_trees == num_trees &&
                     recorded_data_size == train_size) {
-                        speedup = recorded_time / time;
+                        speedup = recorded_time / total_time;
                         efficiency = speedup / thread_count;
                         break;
                 }
@@ -332,7 +378,7 @@ void store_run_params(char* csv_store_time_metrics_path, float time, int num_tre
 
     // Write header if file is new
     if (!file_exists) {
-        fprintf(file, "Time,Threads,Num Trees,Data Size,Speedup,Efficiency\n");
+        fprintf(file, "Train Time,Inference Time,Total Time,Threads,Num Trees,Data Size,Speedup,Efficiency\n");
     } else {
         // Ensure previous line ends with newline
         fseek(file, -1, SEEK_END);
@@ -343,11 +389,11 @@ void store_run_params(char* csv_store_time_metrics_path, float time, int num_tre
     }
 
     if (speedup > 0 && efficiency > 0) {
-        fprintf(file, "%.6f,%d,%d,%d,%.3f,%.3f\n", time, thread_count, num_trees, train_size, speedup, efficiency);
+        fprintf(file, "%.6f,%.6f,%.6f,%d,%d,%d,%.3f,%.3f\n", train_time, inference_time, total_time, thread_count, num_trees, train_size, speedup, efficiency);
     } else if (thread_count == 1) {
-        fprintf(file, "%.6f,%d,%d,%d,%.3f,%.3f\n", time, thread_count, num_trees, train_size, 1.0f, 1.0f);
+        fprintf(file, "%.6f,%.6f,%.6f,%d,%d,%d,%.3f,%.3f\n", train_time, inference_time, total_time, thread_count, num_trees, train_size, 1.0f, 1.0f);
     } else {
-        fprintf(file, "%.6f,%d,%d,%d,%.3f,%.3f\n", time, thread_count, num_trees, train_size, -1.0, -1.0);
+        fprintf(file, "%.6f,%.6f,%.6f,%d,%d,%d,%.3f,%.3f\n", train_time, inference_time, total_time, thread_count, num_trees, train_size, -1.0, -1.0);
     }
 
     fclose(file);

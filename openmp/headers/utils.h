@@ -79,6 +79,19 @@ void stratified_split(float **data, int num_rows, int num_columns, int num_class
                       float ***train_data, int *train_size, float ***test_data, int *test_size, int seed);
 
 /**
+ * Samples data without replacement from the training dataset
+ *
+ * @param train_data The full training dataset
+ * @param train_size Number of samples in the training dataset
+ * @param num_columns Number of features per sample
+ * @param sample_size Number fo samples to sample
+ * @param sampled_data Output buffer for the sampled data (must be pre-allocated)
+ * @return Returns 0 on success, non-zero on failure
+ */
+void sample_data_without_replacement(float **train_data, int train_size, int num_columns, 
+                                   int sample_size, float **sampled_data);
+
+/**
  * @brief Parses command-line arguments for various options.
  * 
  * This function parses command-line arguments to set various parameters. It returns 0 on success
@@ -142,10 +155,11 @@ void summary(char* dataset_path, float train_proportion, float train_tree_propor
  * entry with the corresponding configuration exists, otherwise it sets them to -1.0.
  * 
  * @param csv_store_time_metrics_path Path to the CSV file where metrics will be stored.
- * @param time Time in seconds taken to train the random forest.
+ * @param train_time Time in seconds taken to train the random forest.
+ * @param inference_time Time in seconds taken for inference.
  * @param num_trees Number of trees in the random forest.
  * @param train_size Size of the training data used for each tree.
  * @param thread_count Number of threads used for training. 
  */
-void store_run_params(char* csv_store_time_metrics_path, float time, int num_trees, int train_size, int thread_count);
+void store_run_params(char* csv_store_time_metrics_path, float train_time, float inference_time, int num_trees, int train_size, int thread_count);
 #endif

@@ -54,7 +54,7 @@ int main(int argc, char *argv[]) {
     int train_size, test_size;
 
     struct timeval start_time, end_time;
-    double elapsed_time;
+    double train_time, inference_time;
     
     // Parse command-line arguments
     int parse_result = parse_arguments(argc, argv, &max_matrix_rows_print, &num_classes, &num_trees,
@@ -118,6 +118,8 @@ int main(int argc, char *argv[]) {
         targets[i] = (int)test_data[i][num_columns - 1];
     }
 
+    int train_tree_size = train_size * train_tree_proportion;
+
     summary(dataset_path, train_proportion, train_tree_proportion, train_size, num_columns - 1, num_classes,
             num_trees, max_depth, min_samples_split, max_features, store_predictions_path, 
             store_metrics_path, new_forest_path, trained_forest_path, seed);
@@ -127,17 +129,10 @@ int main(int argc, char *argv[]) {
     
     if (trained_forest_path == NULL){
         gettimeofday(&start_time, NULL);
-        train_forest(random_forest, train_data, train_size, num_columns, num_classes);
+        train_forest(random_forest, train_data, train_size, num_columns, train_tree_size, num_classes);
         gettimeofday(&end_time, NULL);
-        elapsed_time = (end_time.tv_sec - start_time.tv_sec) + 
+        train_time = (end_time.tv_sec - start_time.tv_sec) + 
                    (end_time.tv_usec - start_time.tv_usec) / 1e6;
-        printf("\nTime taken to train the forest: %.6f seconds\n", elapsed_time);
-        printf("    'find_best_split': %.6f seconds\n", total_time_find_best_split);
-        printf("        'merge_sort': %.6f seconds\n", total_time_merge_sort);
-        printf("        'best_split_num_var': %.6f seconds\n", total_time_best_split_num_var);
-        printf("            'split_for_entropy': %.6f seconds\n", total_time_split_for_entropy);
-        printf("            'entropy': %.6f seconds\n", total_time_entropy);
-        printf("    'split_data': %.6f seconds\n", total_time_split_data);
         serialize_forest(random_forest, new_forest_path);
     } else {
         printf("Loading tree from %s\n", trained_forest_path);
@@ -149,9 +144,23 @@ int main(int argc, char *argv[]) {
     }
 
     int* predictions;
+    gettimeofday(&start_time, NULL);
     predictions = forest_inference(random_forest, test_data, test_size, num_classes);
+    gettimeofday(&end_time, NULL);
+    inference_time = (end_time.tv_sec - start_time.tv_sec) + 
+                   (end_time.tv_usec - start_time.tv_usec) / 1e6;
     save_predictions(predictions, test_size, store_predictions_path);
     compute_metrics(predictions, targets, test_size, num_classes, store_metrics_path);
+
+    printf("\nTime taken to train the forest: %.6f seconds\n", train_time);
+    printf("    'find_best_split': %.6f seconds\n", total_time_find_best_split);
+    printf("        'merge_sort': %.6f seconds\n", total_time_merge_sort);
+    printf("        'best_split_num_var': %.6f seconds\n", total_time_best_split_num_var);
+    printf("            'split_for_entropy': %.6f seconds\n", total_time_split_for_entropy);
+    printf("            'entropy': %.6f seconds\n", total_time_entropy);
+    printf("    'split_data': %.6f seconds\n", total_time_split_data);
+    printf("Time taken for inference: %.6f seconds\n", inference_time);
+    printf("Total time taken: %.6f seconds\n", train_time + inference_time);
     
     // Free allocated memory
     free_forest(random_forest);
