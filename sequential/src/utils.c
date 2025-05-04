@@ -55,7 +55,7 @@ void print_array(float *arr, int size, int max_elements) {
     printf("\n");
 }
 
-void summary(char* dataset_path, float train_proportion, int train_size, int num_columns,
+void summary(char* dataset_path, float train_proportion, float train_tree_proportion, int train_size, int num_columns,
              int num_classes, int num_trees, int max_depth, int min_samples_split, char* max_features, 
              char* store_predictions_path, char* store_metrics_path, char* new_tree_path, 
              char* trained_tree_path, int seed) {
@@ -63,6 +63,7 @@ void summary(char* dataset_path, float train_proportion, int train_size, int num
         printf(" - Dataset: %s\n", dataset_path);
         printf(" - Train/test size: %.2f/%.2f\n", train_proportion, 1-train_proportion);
         printf(" - Training samples: %d\n", train_size);
+        printf(" - Training samples per tree (%.2f%%): %d\n", train_tree_proportion, (int)(train_size * train_tree_proportion));
         printf(" - Number of features: %d\n", num_columns);
         printf(" - Number of classes: %d\n", num_classes);
         printf(" - Predictions path: %s\n", store_predictions_path);
@@ -138,7 +139,7 @@ float** read_csv(const char *filename, int *num_rows, int *num_columns) {
 int parse_arguments(int argc, char *argv[], int *max_matrix_rows_print, int *num_classes, int *num_trees,
                     int *max_depth, int *min_samples_split, char **max_features,
                     char **trained_forest_path, char **store_predictions_path, char **store_metrics_path,
-                    char **new_forest_path, char **dataset_path, float *train_proportion, int *seed) {
+                    char **new_forest_path, char **dataset_path, float *train_proportion, float *train_tree_proportion, int *seed) {
 
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--print_matrix") == 0 && i + 1 < argc) {
@@ -176,6 +177,13 @@ int parse_arguments(int argc, char *argv[], int *max_matrix_rows_print, int *num
         }
         else if (strcmp(argv[i], "--max_features") == 0 && i + 1 < argc) {
             *max_features = argv[i + 1];
+        }
+        else if (strcmp(argv[i], "--train_tree_proportion") == 0 && i + 1 < argc) {
+            *train_tree_proportion = atof(argv[i + 1]);
+            if (*train_tree_proportion <= 0 || *train_tree_proportion >= 1) {
+                printf("Train proportion must be between 0 and 1, instead %f was provided.\n", *train_tree_proportion);
+                return 1; 
+            } 
         }
         else if (strcmp(argv[i], "--train_proportion") == 0 && i + 1 < argc) {
             *train_proportion = atof(argv[i + 1]);

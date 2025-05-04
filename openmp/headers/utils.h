@@ -92,16 +92,19 @@ void stratified_split(float **data, int num_rows, int num_columns, int num_class
  * @param trained_tree_path Path for the trained tree to deserialize (--trained_tree_path).
  * @param store_predictions_path Path for storing predictions (--store_predictions_path).
  * @param store_metrics_path Path for storing performance metrics (--store_metrics_path).
+ * @param csv_store_time_metrics_path Path for storing time metrics and run configuration in CSV format (--csv_store_time_metrics_path).
  * @param new_tree_path Path for the new tree to train and then serialize (--new_tree_path).
  * @param dataset_path Path for the dataset to be used (--dataset_path).
  * @param train_proportion Proportion of data to be used for training (--train_proportion).
+ * @param train_tree_proportion Proportion of training data to be used for each tree (--train_tree_proportion).
  * @param num_trees Number of trees to be used in the forest (--num_trees).
  * @param seed Random seed for reproducibility (--seed).
+ * @param thread_count Number of threads to be used for parallel processing (--thread_count).
  */
 int parse_arguments(int argc, char *argv[], int *max_matrix_rows_print, int *num_classes, int *num_trees,
                     int *max_depth, int *min_samples_split, char **max_features, char **trained_tree_path, 
-                    char **store_predictions_path, char **store_metrics_path, char **new_tree_path, 
-                    char **dataset_path, float *train_proportion, int *seed, int *thread_count);
+                    char **store_predictions_path, char **store_metrics_path, char **csv_store_time_metrics_path, char **new_tree_path, 
+                    char **dataset_path, float *train_proportion, float *train_tree_proportion, int *seed, int *thread_count);
 
 /**
  * @brief Prints config used for a run.
@@ -110,6 +113,7 @@ int parse_arguments(int argc, char *argv[], int *max_matrix_rows_print, int *num
  * 
  * @param dataset_path Path to the dataset.
  * @param train_proportion Proportion of data used for training.
+ * @param train_tree_proportion Proportion of training data used for each tree.
  * @param train_size Size of the training data.
  * @param num_columns Number of columns in the dataset.
  * @param num_trees Number of trees in the forest.
@@ -119,14 +123,29 @@ int parse_arguments(int argc, char *argv[], int *max_matrix_rows_print, int *num
  * @param num_classes Number of classes in the dataset.
  * @param store_predictions_path Path to store predictions.
  * @param store_metrics_path Path to store performance metrics.
+ * @param csv_store_metrics_path Path to store time metrics and run configuration in CSV format.
  * @param new_tree_path Path for the new tree.
  * @param trained_tree_path Path for the trained tree.
  * @param seed Random seed used for the run.
+ * @param thread_count Number of threads used for parallel processing.
  */
-void summary(char* dataset_path, float train_proportion, int train_size, int num_columns,
+void summary(char* dataset_path, float train_proportion, float train_tree_proportion, int train_size, int num_columns,
              int num_classes, int num_trees, int max_depth, int min_samples_split, char* max_features, 
-             char* store_predictions_path, char* store_metrics_path, char* new_tree_path, 
+             char* store_predictions_path, char* store_metrics_path, char* csv_store_metrics_path, char* new_tree_path, 
              char* trained_tree_path, int seed, int thread_count);
 
+/** 
+ * @brief Stores run parameters and time metrics in a CSV file.
+ * 
+ * This function appends the run parameters and time metrics to a CSV file. If the file does not exist,
+ * it creates a new one. The function also calculates speedup and efficiency if there is the sequential (thread_count==1)
+ * entry with the corresponding configuration exists, otherwise it sets them to -1.0.
+ * 
+ * @param csv_store_time_metrics_path Path to the CSV file where metrics will be stored.
+ * @param time Time in seconds taken to train the random forest.
+ * @param num_trees Number of trees in the random forest.
+ * @param train_size Size of the training data used for each tree.
+ * @param thread_count Number of threads used for training. 
+ */
 void store_run_params(char* csv_store_time_metrics_path, float time, int num_trees, int train_size, int thread_count);
 #endif

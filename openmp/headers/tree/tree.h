@@ -76,6 +76,7 @@ Node *create_node(int feature, float threshold, Node *left, Node *right,
  * @param max_depth     The maximum depth of the tree.
  * @param min_samples_split Minimum number of samples required to split a node.
  * @param max_features  The number of features to consider when looking for the best split.
+ * @param thread_count  The number of threads to use for parallel processing.
  * @return None
  */
 void grow_tree(Node *parent, float **data, int num_columns, int num_classes, 
@@ -96,6 +97,7 @@ void grow_tree(Node *parent, float **data, int num_columns, int num_classes,
  * @param max_depth     The maximum depth of the tree.
  * @param min_samples_split Minimum number of samples required to split a node.
  * @param max_features  The number of features to consider when looking for the best split.
+ * @param thread_count  The number of threads to use for parallel processing.
  */
 void train_tree(Tree *tree, float **data, int num_rows, int num_columns, int num_classes, 
                 int max_depth, int min_samples_split, char* max_features, int thread_count);

@@ -83,6 +83,7 @@ float get_entropy(int *left_class_counts, int *right_class_counts, int left_size
  * @param target_array The array of target values corresponding to the features.
  * @param size The size of the arrays.
  * @param num_classes The number of possible target classes.
+ * @param thread_count The number of threads to use for parallel processing.
  * @return An array containing the best split's entropy, threshold, sizes of left and right splits,
  *         and the predicted class for each side.
  */
@@ -103,6 +104,8 @@ float* get_best_split_num_var(float *sorted_array, float *target_array, int size
  * @param class_pred_right Pointer to store the predicted class for the right split.
  * @param best_size_left Pointer to store the size of the left split.
  * @param best_size_right Pointer to store the size of the right split.
+ * @param max_features The maximum number of features to consider for the split.
+ * @param thread_count The number of threads to use for parallel processing.
  * @return The best split found, containing entropy, threshold, and other split parameters.
  */
 BestSplit find_best_split(float **data, int num_rows, int num_columns, 

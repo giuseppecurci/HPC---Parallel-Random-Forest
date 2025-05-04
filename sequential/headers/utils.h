@@ -95,13 +95,14 @@ void stratified_split(float **data, int num_rows, int num_columns, int num_class
  * @param new_tree_path Path for the new tree to train and then serialize (--new_tree_path).
  * @param dataset_path Path for the dataset to be used (--dataset_path).
  * @param train_proportion Proportion of data to be used for training (--train_proportion).
+ * @param train_tree_proportion Proportion of training data to be used for each tree (--train_tree_proportion).
  * @param num_trees Number of trees to be used in the forest (--num_trees).
  * @param seed Random seed for reproducibility (--seed).
  */
 int parse_arguments(int argc, char *argv[], int *max_matrix_rows_print, int *num_classes, int *num_trees,
                     int *max_depth, int *min_samples_split, char **max_features, char **trained_tree_path, 
                     char **store_predictions_path, char **store_metrics_path, char **new_tree_path, 
-                    char **dataset_path, float *train_proportion, int *seed);
+                    char **dataset_path, float *train_proportion, float *train_tree_proportion, int *seed);
 
 /**
  * @brief Prints config used for a run.
@@ -110,6 +111,7 @@ int parse_arguments(int argc, char *argv[], int *max_matrix_rows_print, int *num
  * 
  * @param dataset_path Path to the dataset.
  * @param train_proportion Proportion of data used for training.
+ * @param train_tree_proportion Proportion of training data used for each tree.
  * @param train_size Size of the training data.
  * @param num_columns Number of columns in the dataset.
  * @param num_trees Number of trees in the forest.
@@ -123,7 +125,7 @@ int parse_arguments(int argc, char *argv[], int *max_matrix_rows_print, int *num
  * @param trained_tree_path Path for the trained tree.
  * @param seed Random seed used for the run.
  */
-void summary(char* dataset_path, float train_proportion, int train_size, int num_columns,
+void summary(char* dataset_path, float train_proportion, float train_tree_proportion, int train_size, int num_columns,
              int num_classes, int num_trees, int max_depth, int min_samples_split, char* max_features, 
              char* store_predictions_path, char* store_metrics_path, char* new_tree_path, 
              char* trained_tree_path, int seed);

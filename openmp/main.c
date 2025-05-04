@@ -42,6 +42,7 @@ int main(int argc, char *argv[]) {
     char *store_metrics_path = "output/metrics_output.txt"; 
     char *csv_store_time_metrics_path = "output/store_time_metrics.csv";
     float train_proportion = 0.8;
+    float train_tree_proportion = 0.75; // Default: 75% of the training data
     int num_trees = 10;
     char* max_features = "sqrt";
     int min_samples_split = 2;
@@ -61,8 +62,8 @@ int main(int argc, char *argv[]) {
     int parse_result = parse_arguments(argc, argv, &max_matrix_rows_print, &num_classes, &num_trees,
                                         &max_depth, &min_samples_split, &max_features,
                                         &trained_forest_path, &store_predictions_path,
-                                        &store_metrics_path, &new_forest_path, &dataset_path,
-                                        &train_proportion, &seed, &thread_count);
+                                        &store_metrics_path, &csv_store_time_metrics_path, &new_forest_path, &dataset_path,
+                                        &train_proportion, &train_tree_proportion, &seed, &thread_count);
     if (parse_result != 0) {
         printf("Error parsing arguments. Please check the command line options.\n");
         return 1;
@@ -119,9 +120,9 @@ int main(int argc, char *argv[]) {
         targets[i] = (int)test_data[i][num_columns - 1];
     }
 
-    summary(dataset_path, train_proportion, train_size, num_columns - 1, num_classes,
+    summary(dataset_path, train_proportion, train_tree_proportion, train_size, num_columns - 1, num_classes,
             num_trees, max_depth, min_samples_split, max_features, store_predictions_path, 
-            store_metrics_path, new_forest_path, trained_forest_path, seed, thread_count);
+            store_metrics_path, csv_store_time_metrics_path, new_forest_path, trained_forest_path, seed, thread_count);
     
 	Forest *random_forest = (Forest *)malloc(sizeof(Forest));
     create_forest(random_forest, num_trees, max_depth, min_samples_split, max_features);

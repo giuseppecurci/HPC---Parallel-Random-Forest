@@ -56,18 +56,20 @@ void print_array(float *arr, int size, int max_elements) {
     printf("\n");
 }
 
-void summary(char* dataset_path, float train_proportion, int train_size, int num_columns,
+void summary(char* dataset_path, float train_proportion, float train_tree_proportion, int train_size, int num_columns,
              int num_classes, int num_trees, int max_depth, int min_samples_split, char* max_features, 
-             char* store_predictions_path, char* store_metrics_path, char* new_tree_path, 
+             char* store_predictions_path, char* store_metrics_path, char* csv_store_time_metrics_path, char* new_tree_path, 
              char* trained_tree_path, int seed, int thread_count) {
         printf("Summary setup:\n");
         printf(" - Dataset: %s\n", dataset_path);
         printf(" - Train/test size: %.2f/%.2f\n", train_proportion, 1-train_proportion);
         printf(" - Training samples: %d\n", train_size);
+        printf(" - Training samples per tree (%.2f%%): %d\n", train_tree_proportion, (int)(train_size * train_tree_proportion));
         printf(" - Number of features: %d\n", num_columns);
         printf(" - Number of classes: %d\n", num_classes);
         printf(" - Predictions path: %s\n", store_predictions_path);
-        printf(" - Metrics path: %s\n", store_metrics_path);
+        printf(" - Classification Metrics path: %s\n", store_metrics_path);
+        printf(" - Performance metrics path: %s\n", csv_store_time_metrics_path);
         if (trained_tree_path != NULL) {
             printf(" - Trained Forest path: %s\n", trained_tree_path);
         } else {
@@ -139,8 +141,8 @@ float** read_csv(const char *filename, int *num_rows, int *num_columns) {
 
 int parse_arguments(int argc, char *argv[], int *max_matrix_rows_print, int *num_classes, int *num_trees,
                     int *max_depth, int *min_samples_split, char **max_features,
-                    char **trained_forest_path, char **store_predictions_path, char **store_metrics_path,
-                    char **new_forest_path, char **dataset_path, float *train_proportion, int *seed, int *thread_count) {
+                    char **trained_forest_path, char **store_predictions_path, char **store_metrics_path, char **csv_store_time_metrics_path,
+                    char **new_forest_path, char **dataset_path, float *train_proportion, float *train_tree_proportion, int *seed, int *thread_count) {
 
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--print_matrix") == 0 && i + 1 < argc) {
@@ -160,6 +162,9 @@ int parse_arguments(int argc, char *argv[], int *max_matrix_rows_print, int *num
         }
         else if (strcmp(argv[i], "--store_metrics_path") == 0 && i + 1 < argc) {
             *store_metrics_path = argv[i + 1]; 
+        }
+        else if (strcmp(argv[i], "--csv_store_time_metrics_path") == 0 && i + 1 < argc) {
+            *csv_store_time_metrics_path = argv[i + 1]; 
         }
         else if (strcmp(argv[i], "--new_forest_path") == 0 && i + 1 < argc) {
             *new_forest_path = argv[i + 1]; 
@@ -183,6 +188,13 @@ int parse_arguments(int argc, char *argv[], int *max_matrix_rows_print, int *num
             *train_proportion = atof(argv[i + 1]);
             if (*train_proportion <= 0 || *train_proportion >= 1) {
                 printf("Train proportion must be between 0 and 1, instead %f was provided.\n", *train_proportion);
+                return 1; 
+            } 
+        }
+        else if (strcmp(argv[i], "--train_tree_proportion") == 0 && i + 1 < argc) {
+            *train_tree_proportion = atof(argv[i + 1]);
+            if (*train_tree_proportion <= 0 || *train_tree_proportion >= 1) {
+                printf("Train proportion must be between 0 and 1, instead %f was provided.\n", *train_tree_proportion);
                 return 1; 
             } 
         }
@@ -335,7 +347,7 @@ void store_run_params(char* csv_store_time_metrics_path, float time, int num_tre
     } else if (thread_count == 1) {
         fprintf(file, "%.6f,%d,%d,%d,%.3f,%.3f\n", time, thread_count, num_trees, train_size, 1.0f, 1.0f);
     } else {
-        fprintf(file, "%.6f,%d,%d,%d,%d,%d\n", time, thread_count, num_trees, train_size, 0.0, 0.0);
+        fprintf(file, "%.6f,%d,%d,%d,%.3f,%.3f\n", time, thread_count, num_trees, train_size, -1.0, -1.0);
     }
 
     fclose(file);

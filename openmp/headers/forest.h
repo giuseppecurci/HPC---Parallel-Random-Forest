@@ -49,6 +49,7 @@ void create_forest(Forest *forest, int num_trees, int max_depth, int min_samples
  * @param num_rows Number of data samples.
  * @param num_columns Number of columns in each data sample (features + 1 label).
  * @param num_classes Total number of classes.
+ * @param thread_count Number of threads to use for parallel processing.
  */
 void train_forest(Forest *forest, float **data, int num_rows, int num_columns, int num_classes, int thread_count);
 
