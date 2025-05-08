@@ -1,7 +1,10 @@
 #!/bin/bash
 
-# Loop from 1 to 16
-for threads in {1..16}; do
-    echo "\nRunning with $threads threads..."
-    ./final --thread_count $threads --num_trees 10
+datasets=("small_classification_dataset.csv" "medium_classification_dataset.csv" "large_classification_dataset.csv")
+
+for threads in {1..1}; do
+  for dataset in "${datasets[@]}"; do
+    qsub -v N_THREADS=$threads,DATASET=$dataset,N_TREES=100,MIN_SAMPLES_SPLIT=200 random_forest.sh
+  done
 done
+
