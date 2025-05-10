@@ -5,8 +5,9 @@ MAX_JOBS=36
 USER_NAME="giuseppe.curci"
 N_TREES=100
 MIN_SAMPLES_SPLIT=200
+EXP_THREADS=(1 2 4 8 16 32 64)
 
-for threads in {1..16}; do
+for threads in "${EXP_THREADS[@]}"; do
   echo "Running with $threads"
   for dataset in "${datasets[@]}"; do
     
@@ -21,7 +22,7 @@ for threads in {1..16}; do
       echo "        Job limit reached ($MAX_JOBS). Sleeping for 5 minutes..."
       sleep 600  # 10 minutes
     done
-
+    
     qsub -v N_THREADS=$threads,DATASET=$dataset,N_TREES=100,MIN_SAMPLES_SPLIT=200 random_forest.sh
   done
 done

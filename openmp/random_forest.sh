@@ -1,5 +1,5 @@
 #!/bin/bash 
-#PBS -l select=1:ncpus=16:mem=2gb
+#PBS -l select=1:ncpus=64:mem=2gb
 #PBS -l walltime=6:00:00
 #PBS -q short_cpuQ
 #PBS -v N_THREADS,N_TREES,MIN_SAMPLES_SPLIT,DATASET
