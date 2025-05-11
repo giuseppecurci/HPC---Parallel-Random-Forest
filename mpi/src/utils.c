@@ -304,3 +304,13 @@ int sample_data_without_replacement(float *train_data, int train_size, int num_c
     
     return sample_size; // Return the actual number of samples created
 };
+
+void distribute_trees(int num_trees, int size, int *counts, int *displs) {
+    int base = num_trees / size;
+    int rem = num_trees % size;
+
+    for (int i = 0; i < size; i++) {
+        counts[i] = base + (i < rem ? 1 : 0);  // Spread remainder evenly
+        displs[i] = (i == 0) ? 0 : displs[i - 1] + counts[i - 1];
+    }
+};

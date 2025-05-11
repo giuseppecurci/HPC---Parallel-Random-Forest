@@ -48,3 +48,4 @@ void summary(char* dataset_path, float train_proportion, int train_size, int num
  */
 int sample_data_without_replacement(float *train_data, int train_size, int num_columns, 
                                    float sample_proportion, float *sampled_data);
+void distribute_trees(int num_trees, int size, int *counts, int *displs);
