@@ -23,6 +23,6 @@ for threads in "${EXP_THREADS[@]}"; do
       sleep 600  # 10 minutes
     done
     
-    qsub -v N_THREADS=$threads,DATASET=$dataset,N_TREES=100,MIN_SAMPLES_SPLIT=200 random_forest.sh
+    qsub -v N_THREADS=$threads,DATASET=$dataset,N_TREES=$N_TREES,MIN_SAMPLES_SPLIT=$MIN_SAMPLES_SPLIT random_forest.sh
   done
 done
