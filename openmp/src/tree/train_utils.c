@@ -177,19 +177,6 @@ float* get_best_split_num_var(
                 }
         }
 
-        for (int t = 0; t < thread_count; t++) 
-        {
-            // Combine results from all threads
-            if (best_split_threads[t][0] < best_split[0]) {
-                best_split[0] = best_split_threads[t][0];
-                best_split[1] = best_split_threads[t][1];
-                best_split[2] = best_split_threads[t][2];
-                best_split[3] = best_split_threads[t][3];
-                best_split[4] = best_split_threads[t][4];
-                best_split[5] = best_split_threads[t][5];
-            }
-        }
-
         for (int t = 0; t < thread_count; t++) {
             if (best_split_threads[t][0] < best_split[0]) {
                 best_split[0] = best_split_threads[t][0];
