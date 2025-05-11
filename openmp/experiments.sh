@@ -6,13 +6,14 @@ USER_NAME="giuseppe.curci"
 N_TREES=100
 MIN_SAMPLES_SPLIT=200
 EXP_THREADS=(1 2 4 8 16 32 64)
+TIME_METRICS_PATH="output/store_time_metrics_improved.csv"
 
 for threads in "${EXP_THREADS[@]}"; do
   echo "Running with $threads"
   for dataset in "${datasets[@]}"; do
     
     dataset_name="${dataset%.csv}"
-    log_dir="logs/${dataset_name}/trees_${N_TREES}_sample_split_${MIN_SAMPLES_SPLIT}/threads_${threads}"
+    log_dir="logs/${dataset_name}/trees_${N_TREES}_sample_split_${MIN_SAMPLES_SPLIT}/improved/threads_${threads}"
     if [ -d "$log_dir" ]; then
       continue
     fi
@@ -23,6 +24,6 @@ for threads in "${EXP_THREADS[@]}"; do
       sleep 600  # 10 minutes
     done
     
-    qsub -v N_THREADS=$threads,DATASET=$dataset,N_TREES=$N_TREES,MIN_SAMPLES_SPLIT=$MIN_SAMPLES_SPLIT random_forest.sh
+    qsub -v N_THREADS=$threads,DATASET=$dataset,N_TREES=$N_TREES,MIN_SAMPLES_SPLIT=$MIN_SAMPLES_SPLIT,LOGDIR=$log_dir,TIME_METRICS_PATH=$TIME_METRICS_PATH random_forest.sh
   done
 done
