@@ -124,6 +124,13 @@ float* get_best_split_num_var(
         best_split[0] = INFINITY;  
         best_split[1] = 0.0;
         best_split[2] = best_split[3] = best_split[4] = best_split[5] = -1;
+        float** best_split_threads = malloc(thread_count * sizeof(float*));
+        for (int t = 0; t < thread_count; t++) {
+            best_split_threads[t] = malloc(6 * sizeof(float));
+            best_split_threads[t][0] = INFINITY;
+            best_split_threads[t][1] = 0.0;
+            best_split_threads[t][2] = best_split_threads[t][3] = best_split_threads[t][4] = best_split_threads[t][5] = -1;
+        }
 
         // Allocate per-thread class counts
         int** left_class_counts_array = malloc(thread_count * sizeof(int*));
@@ -156,21 +163,30 @@ float* get_best_split_num_var(
         
             float entropy = get_entropy(left_class_counts, right_class_counts, left_size, right_size, num_classes);
 
-            #pragma omp critical 
-            {
-                if (
-                    (entropy + EPSILON < best_split[0]) || 
-                    (fabs(entropy - best_split[0]) < EPSILON && avg < best_split[1])
+            if (
+                (entropy + EPSILON < best_split_threads[tid][0]) || 
+                (fabs(entropy - best_split_threads[tid][0]) < EPSILON && avg < best_split_threads[tid][1])
                 )
                 {
-                    best_split[0] = entropy;
-                    best_split[1] = avg;
-                    best_split[2] = left_size;
-                    best_split[3] = right_size;
-                    best_split[4] = argmax(left_class_counts, num_classes);
-                    best_split[5] = argmax(right_class_counts, num_classes);
+                    best_split_threads[tid][0] = entropy;
+                    best_split_threads[tid][1] = avg;
+                    best_split_threads[tid][2] = left_size;
+                    best_split_threads[tid][3] = right_size;
+                    best_split_threads[tid][4] = argmax(left_class_counts, num_classes);
+                    best_split_threads[tid][5] = argmax(right_class_counts, num_classes);
                 }
+        }
+
+        for (int t = 0; t < thread_count; t++) {
+            if (best_split_threads[t][0] < best_split[0]) {
+                best_split[0] = best_split_threads[t][0];
+                best_split[1] = best_split_threads[t][1];
+                best_split[2] = best_split_threads[t][2];
+                best_split[3] = best_split_threads[t][3];
+                best_split[4] = best_split_threads[t][4];
+                best_split[5] = best_split_threads[t][5];
             }
+            free(best_split_threads[t]);
         }
 
         for (int t = 0; t < thread_count; t++) {
