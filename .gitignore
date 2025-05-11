@@ -56,7 +56,10 @@ hpc_venv/
 venv/
 data/*_classification_dataset.csv
 final
-output/
+*/output/predictions.csv
+*/output/metrics_output.txt
+*/output/charts
+*/output/model
 Doxyfile 
 latex/
 html/
