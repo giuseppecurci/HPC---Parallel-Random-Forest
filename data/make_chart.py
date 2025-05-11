@@ -34,9 +34,9 @@ def update_metrics(df, group, data_size, num_trees):
 
 if __name__ == "__main__":
     args = parse_args()    
-    metrics_path = f"../{args.program_version}/output/store_time_metrics.csv"
-    speedup_path = f"../{args.program_version}/output/charts/store_speedup.png"
-    efficiency_path = f"../{args.program_version}/output/charts/store_efficiency.png"
+    metrics_path = f"../{args.program_version}/output/store_time_metrics_improved.csv"
+    speedup_path = f"../{args.program_version}/output/charts_improved/store_speedup.png"
+    efficiency_path = f"../{args.program_version}/output/charts_improved/store_efficiency.png"
 
     os.makedirs(os.path.dirname(speedup_path), exist_ok=True)
     os.makedirs(os.path.dirname(efficiency_path), exist_ok=True)
