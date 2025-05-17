@@ -125,25 +125,17 @@ float* get_best_split_num_var(
         best_split[1] = 0.0;
         best_split[2] = best_split[3] = best_split[4] = best_split[5] = -1;
 
-        // Allocate per-thread class counts
-        int** left_class_counts_array = malloc(thread_count * sizeof(int*));
-        int** right_class_counts_array = malloc(thread_count * sizeof(int*));
-        for (int t = 0; t < thread_count; t++) {
-            left_class_counts_array[t] = calloc(num_classes, sizeof(int));
-            right_class_counts_array[t] = calloc(num_classes, sizeof(int));
-        }
+        int left_class_counts[num_classes];
+        int right_class_counts[num_classes];
 
-        #pragma omp parallel for num_threads(thread_count)
+        #pragma omp parallel for num_threads(thread_count) private(left_class_counts, right_class_counts)
         for (int i = 0; i < size - 1; i++)
         {   
-            int tid = omp_get_thread_num();
 
             float avg = (sorted_array[i] + sorted_array[i + 1]) / 2;
             int left_size = i + 1;
             int right_size = size - i - 1; 
 
-            int* left_class_counts = left_class_counts_array[tid];
-            int* right_class_counts = right_class_counts_array[tid];
             memset(left_class_counts, 0, num_classes * sizeof(int));
             memset(right_class_counts, 0, num_classes * sizeof(int));
 
@@ -172,13 +164,6 @@ float* get_best_split_num_var(
                 }
             }
         }
-
-        for (int t = 0; t < thread_count; t++) {
-            free(left_class_counts_array[t]);
-            free(right_class_counts_array[t]);
-        }
-        free(left_class_counts_array);
-        free(right_class_counts_array);
 
         return best_split;
     }
