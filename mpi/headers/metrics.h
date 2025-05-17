@@ -12,7 +12,6 @@
  * - Recall: Proportion of actual positive instances correctly identified for each class.
  * 
  */
-
 #ifndef METRICS_H  
 #define METRICS_H 
 
@@ -59,10 +58,29 @@ float** precision_recall(int *predictions, int *targets, int size, int num_class
  * @param targets Array of true class labels.
  * @param size The total number of predictions/targets.
  * @param num_classes The number of unique classes.
- * @param metrics_path The path to the .txt file where the metrics will be saved. 
+ * @param metrics_path The path to the .txt file where the metrics will be saved.
+ * @param rank The rank of the process in a distributed environment (for MPI).
  */
 void compute_metrics(int *predictions, int *targets, int size, int num_classes, const char* metrics_path, int rank);
+
+/**
+ * @brief Aggregates predictions from multiple processes and computes/saves performance metrics.
+ * 
+ * This function collects predictions from all processes in a distributed environment,
+ * aggregates them, computes the performance metrics (accuracy, precision, recall),
+ * and saves both the predictions and metrics to specified files.
+ * 
+ * @param process_number The total number of processes in the distributed environment.
+ * @param test_size The number of samples in the test dataset.
+ * @param num_classes The number of unique classes in the dataset.
+ * @param all_predictions A 2D array containing predictions from all processes.
+ * @param targets Array of true class labels.
+ * @param store_predictions_path The path to the file where predictions will be saved.
+ * @param store_metrics_path The path to the file where metrics will be saved.
+ * @param rank The rank of the current process in the distributed environment.
+ */
 void aggregate_and_save_predictions(int process_number, int test_size, int num_classes,
                                      int **all_predictions, int *targets,
                                      const char *store_predictions_path, const char *store_metrics_path, int rank);
+
 #endif
