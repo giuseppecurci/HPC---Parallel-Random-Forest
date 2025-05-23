@@ -1,5 +1,6 @@
 // MPI Implementation 
 #include <stdio.h>
+#include <float.h>  // For DBL_MAX
 #include <mpi.h>
 #include <stdlib.h>
 #include <string.h>
@@ -42,7 +43,7 @@ int main(int argc, char *argv[]) {
     int train_size, test_size;
 	int sample_size, mode;
 
-	// Variables for timing
+	// Variables for timing (only used by non-0 processes)
 	double train_start, train_end;
 	double infer_start, infer_end;
 	double train_time, inference_time, total_time;
@@ -199,10 +200,9 @@ int main(int argc, char *argv[]) {
 					}
 				}
 			}
-			// master - alberi distribuiti
-			infer_start = MPI_Wtime();
-			train_start = 0;
-			train_end = 0;
+			
+			// Barrier to ensure all worker processes have received their trees before timing starts
+			MPI_Barrier(MPI_COMM_WORLD);
 			
 			// Allocate space for collecting predictions from all workers
 			int **all_predictions = (int **)malloc((process_number - 1) * sizeof(int *));
@@ -224,9 +224,6 @@ int main(int argc, char *argv[]) {
 					printf("Process 0: Received predictions from process %d\n", p);
 				}
 			}
-
-			// master - alberi distribuiti
-			infer_end = MPI_Wtime();
 			
 			aggregate_and_save_predictions(process_number, test_size, num_classes,
                                all_predictions, tree_counts, targets,
@@ -253,6 +250,8 @@ int main(int argc, char *argv[]) {
 				MPI_Send(&tree_counts[p], 1, MPI_INT, p + 1, 0, MPI_COMM_WORLD);
 			}
 			
+			// Barrier to ensure all worker processes have received their assignments before timing starts
+			MPI_Barrier(MPI_COMM_WORLD);
 
 			// Allocate space for collecting predictions from all workers
 			int **all_predictions = (int **)malloc((process_number - 1) * sizeof(int *));
@@ -419,7 +418,21 @@ int main(int argc, char *argv[]) {
 					free(buffer);
 					
 					printf("Process %d: Received tree %d of %d\n", rank, t+1, num_trees_assigned);
-					
+				}
+				
+				// === TIMING STARTS HERE ===
+				// Barrier to synchronize all processes before timing starts
+				MPI_Barrier(MPI_COMM_WORLD);
+				
+				// For mode 1, we only have inference (no training)
+				train_start = 0.0;
+				train_end = 0.0;
+				
+				// Start inference timing
+				infer_start = MPI_Wtime();
+				
+				// Generate predictions for all trees
+				for (int t = 0; t < num_trees_assigned; t++) {
 					// Generate predictions for this tree
 					int *tree_preds = tree_inference_1d(&trees[t], test_data, test_size, num_columns);
 					if (!tree_preds) {
@@ -435,6 +448,20 @@ int main(int argc, char *argv[]) {
 					// Free predictions for this tree
 					free(tree_preds);
 				}
+				
+				// End inference timing
+				infer_end = MPI_Wtime();
+				
+				// Calculate times
+				train_time = train_end - train_start;  // Will be 0 for mode 1
+				inference_time = infer_end - infer_start;
+				total_time = train_time + inference_time;
+				
+				printf("Process %d: Training time: %.6f seconds\n", rank, train_time);
+				printf("Process %d: Inference time: %.6f seconds\n", rank, inference_time);
+				printf("Process %d: Total time: %.6f seconds\n", rank, total_time);
+				
+				// === TIMING ENDS HERE ===
 				
 				// Send all predictions to process 0
 				MPI_Send(local_predictions, num_trees_assigned * test_size, MPI_INT, 0, 3, MPI_COMM_WORLD);
@@ -461,6 +488,10 @@ int main(int argc, char *argv[]) {
 			MPI_Recv(&num_trees_assigned, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 			printf("Process %d: Assigned %d trees to train\n", rank, num_trees_assigned);
 
+			// === TIMING STARTS HERE ===
+			// Barrier to synchronize all processes before timing starts
+			MPI_Barrier(MPI_COMM_WORLD);
+
 			// Create an array to store the trained trees
 			Tree *trees = NULL;
 			if (num_trees_assigned > 0) {
@@ -470,6 +501,9 @@ int main(int argc, char *argv[]) {
 					MPI_Abort(MPI_COMM_WORLD, 1);
 				}
 				
+				// Start training timing
+				train_start = MPI_Wtime();
+				
 				// Train each tree and store it directly in the array
 				for (int t = 0; t < num_trees_assigned; t++) {
 					// Train the tree and store it directly in the array at position t
@@ -478,6 +512,13 @@ int main(int argc, char *argv[]) {
 					
 					printf("Process %d: Tree %d of %d successfully trained\n", rank, t+1, num_trees_assigned);
 				}
+				
+				// End training timing
+				train_end = MPI_Wtime();
+				
+				// Start inference timing
+				infer_start = MPI_Wtime();
+				
 				// Allocate space for predictions after all trees are trained
 				int *local_predictions = (int *)malloc(num_trees_assigned * test_size * sizeof(int));
 				if (!local_predictions) {
@@ -498,6 +539,20 @@ int main(int argc, char *argv[]) {
 					}
 					free(tree_preds);  // Free memory returned by tree_inference_1d
 				}
+				
+				// End inference timing
+				infer_end = MPI_Wtime();
+				
+				// Calculate times
+				train_time = train_end - train_start;
+				inference_time = infer_end - infer_start;
+				total_time = train_time + inference_time;
+				
+				printf("Process %d: Training time: %.6f seconds\n", rank, train_time);
+				printf("Process %d: Inference time: %.6f seconds\n", rank, inference_time);
+				printf("Process %d: Total time: %.6f seconds\n", rank, total_time);
+				
+				// === TIMING ENDS HERE ===
 				
 				// Send the predictions to process 0
 				MPI_Send(local_predictions, num_trees_assigned * test_size, MPI_INT, 0, 3, MPI_COMM_WORLD);
@@ -536,17 +591,29 @@ int main(int argc, char *argv[]) {
 			}	
 		}
 	}
-	if (rank == 0){
-		// sbagliato, quando hai allenamento + inferenza allora total time = fine_inferenza - train_start
-		// se hai solo inferenza allora total time = fine_inferenza - train_start
-		// nota che se mando alberi a x processi, devo fare una barrier subito dopo altrimenti non prendo il timing corretto dato che processo 1 ha gli alberi e può trainare, gli altri processi li stanno ancora ricevendo
-		inference_time = infer_end - infer_start;
-		train_time = train_end - train_start;
-		total_time = inference_time + train_time;
-		printf("\nTime taken to train the forest: %.6f seconds\n", train_time);
-		printf("Time taken for inference: %.6f seconds\n", inference_time);
-		printf("Total time taken: %.6f seconds\n", train_time + inference_time);
+	
+	// Collect timing results from all worker processes and report minimum times
+	double global_min_train_time, global_min_inference_time, global_min_total_time;
+	
+	// Use MPI_Reduce to find minimum times across all processes
+	// Note: Process 0 doesn't participate in timing, so we use dummy values for it
+	double local_train_time = (rank == 0) ? DBL_MAX : train_time;
+	double local_inference_time = (rank == 0) ? DBL_MAX : inference_time;
+	double local_total_time = (rank == 0) ? DBL_MAX : total_time;
+	
+	MPI_Reduce(&local_train_time, &global_min_train_time, 1, MPI_DOUBLE, MPI_MIN, 0, MPI_COMM_WORLD);
+	MPI_Reduce(&local_inference_time, &global_min_inference_time, 1, MPI_DOUBLE, MPI_MIN, 0, MPI_COMM_WORLD);
+	MPI_Reduce(&local_total_time, &global_min_total_time, 1, MPI_DOUBLE, MPI_MIN, 0, MPI_COMM_WORLD);
+	
+	// Process 0 reports the minimum times
+	if (rank == 0) {
+		printf("\n=== MINIMUM TIMING RESULTS ACROSS ALL WORKER PROCESSES ===\n");
+		printf("Minimum training time: %.6f seconds\n", global_min_train_time);
+		printf("Minimum inference time: %.6f seconds\n", global_min_inference_time);
+		printf("Minimum total time: %.6f seconds\n", global_min_total_time);
+		printf("============================================================\n");
 	}
+	
 	MPI_Finalize();
 	return 0;
 }
