@@ -7,7 +7,7 @@
 int parse_arguments(int argc, char *argv[], int *max_matrix_rows_print, int *num_classes, int *num_trees,
                     int *max_depth, int *min_samples_split, char **max_features,
                     char **trained_forest_path, char **store_predictions_path, char **store_metrics_path,
-                    char **new_forest_path, char **dataset_path, float *train_proportion, int *seed) {
+                    char **new_forest_path, char **dataset_path, float *train_proportion, float *train_tree_proportion, int *seed) {
 
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--print_matrix") == 0 && i + 1 < argc) {
@@ -217,8 +217,7 @@ void stratified_split(float *data, int num_rows, int num_columns, int num_classe
     free(class_counts);
     free(class_fill_ptrs);
 }
-
-void summary(char* dataset_path, float train_proportion, int train_size, int num_columns,
+void summary(char* dataset_path, float train_proportion, float train_tree_proportion, int train_size, int num_columns,
              int num_classes, int num_trees, int max_depth, int min_samples_split, char* max_features, 
              char* store_predictions_path, char* store_metrics_path, char* new_tree_path, 
              char* trained_tree_path, int seed) {
@@ -226,6 +225,7 @@ void summary(char* dataset_path, float train_proportion, int train_size, int num
         printf(" - Dataset: %s\n", dataset_path);
         printf(" - Train/test size: %.2f/%.2f\n", train_proportion, 1-train_proportion);
         printf(" - Training samples: %d\n", train_size);
+        printf(" - Training samples per tree (%.2f%%): %d\n", train_tree_proportion, (int)(train_size * train_tree_proportion));
         printf(" - Number of features: %d\n", num_columns);
         printf(" - Number of classes: %d\n", num_classes);
         printf(" - Predictions path: %s\n", store_predictions_path);
@@ -252,58 +252,54 @@ void summary(char* dataset_path, float train_proportion, int train_size, int num
  * @param sampled_data Output buffer for the sampled data (must be pre-allocated)
  * @return Returns 0 on success, non-zero on failure
  */
+
 int sample_data_without_replacement(float *train_data, int train_size, int num_columns, 
-                                   float sample_proportion, float *sampled_data) {
+                                    float sample_proportion, float *sampled_data, int seed) {
     if (train_data == NULL || sampled_data == NULL || train_size <= 0 || 
         num_columns <= 0 || sample_proportion <= 0 || sample_proportion > 1) {
         fprintf(stderr, "Invalid parameters for data sampling\n");
         return 1;
     }
-    
+
     int sample_size = (int)(sample_proportion * train_size);
     if (sample_size <= 0) {
         fprintf(stderr, "Sample size is too small\n");
         return 1;
     }
-    
-    // Allocate array for sampled indices
-    int *sampled_indices = (int *)malloc(sample_size * sizeof(int));
-    if (sampled_indices == NULL) {
-        fprintf(stderr, "Failed to allocate memory for sampled indices\n");
+
+    // Allocate and initialize index array
+    int *indices = (int *)malloc(train_size * sizeof(int));
+    if (indices == NULL) {
+        fprintf(stderr, "Failed to allocate memory for indices\n");
         return 1;
     }
-    
-    // Random sampling without replacement
-    for (int i = 0; i < sample_size; i++) {
-        int idx;
-        int unique;
-        do {
-            unique = 1;
-            idx = rand() % train_size;
-            // Check if idx was already chosen
-            for (int j = 0; j < i; j++) {
-                if (sampled_indices[j] == idx) {
-                    unique = 0;
-                    break;
-                }
-            }
-        } while (!unique);
-        sampled_indices[i] = idx;
+
+    for (int i = 0; i < train_size; i++) {
+        indices[i] = i;
     }
-    
-    // Fill the sampled data buffer
+
+    // Fisher-Yates shuffle
+    srand(seed);
+    for (int i = train_size - 1; i > 0; i--) {
+        int j = rand() % (i + 1);
+        int temp = indices[i];
+        indices[i] = indices[j];
+        indices[j] = temp;
+    }
+
+    // Copy the first sample_size rows using flat memory layout
     for (int i = 0; i < sample_size; i++) {
-        int original_row = sampled_indices[i];
+        int original_row = indices[i];
         for (int j = 0; j < num_columns; j++) {
             sampled_data[i * num_columns + j] = train_data[original_row * num_columns + j];
         }
     }
-    
-    // Free temporary buffer
-    free(sampled_indices);
-    
-    return sample_size; // Return the actual number of samples created
-};
+
+    free(indices);
+    return sample_size;
+}
+
+
 
 void distribute_trees(int num_trees, int size, int *counts, int *displs) {
     int base = num_trees / size;

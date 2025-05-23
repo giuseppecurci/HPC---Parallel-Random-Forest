@@ -97,9 +97,14 @@ void compute_metrics(int *predictions, int *targets, int size, int num_classes, 
 }
 
 void aggregate_and_save_predictions(int process_number, int test_size, int num_classes,
-                                     int **all_predictions, int *targets, 
-                                     const char *store_predictions_path, const char *store_metrics_path, int rank) {
-    // Aggregate votes
+                                   int **all_predictions, int *tree_counts, int *targets,
+                                   const char *store_predictions_path, const char *store_metrics_path, int rank) {
+    // Calculate total number of trees
+    int total_trees = 0;
+    for (int p = 0; p < process_number - 1; p++) {
+        total_trees += tree_counts[p];
+    }
+
     int *aggregated_predictions = (int *)malloc(test_size * sizeof(int));
     if (!aggregated_predictions) {
         printf("Memory allocation failed for aggregated_predictions\n");
@@ -107,7 +112,7 @@ void aggregate_and_save_predictions(int process_number, int test_size, int num_c
     }
 
     for (int i = 0; i < test_size; i++) {
-        // Create a vote count array for each class
+        // Vote count array for each class
         int *votes = (int *)calloc(num_classes, sizeof(int));
         if (!votes) {
             printf("Memory allocation failed for votes\n");
@@ -115,15 +120,20 @@ void aggregate_and_save_predictions(int process_number, int test_size, int num_c
             return;
         }
 
-        // Count votes from each process
+        // Aggregate votes from all trees (all processes)
         for (int p = 0; p < process_number - 1; p++) {
-            int predicted_class = all_predictions[p][i];
-            if (predicted_class >= 0 && predicted_class < num_classes) {
-                votes[predicted_class]++;
+            int trees_p = tree_counts[p];
+            for (int t = 0; t < trees_p; t++) {
+                int pred_class = all_predictions[p][t * test_size + i];
+                if (p != process_number - 2 || t != trees_p - 1) {
+                }
+                if (pred_class >= 0 && pred_class < num_classes) {
+                    votes[pred_class]++;
+                }
             }
         }
 
-        // Find the class with the maximum votes
+        // Find class with maximum votes
         int max_votes = -1;
         int max_class = 0;
         for (int c = 0; c < num_classes; c++) {
@@ -132,13 +142,11 @@ void aggregate_and_save_predictions(int process_number, int test_size, int num_c
                 max_class = c;
             }
         }
-
-        // Assign the majority vote as the prediction
         aggregated_predictions[i] = max_class;
         free(votes);
     }
 
-    // Save predictions to file if requested
+    // Save predictions if path is given
     if (store_predictions_path != NULL) {
         FILE *pred_file = fopen(store_predictions_path, "w");
         if (pred_file == NULL) {
@@ -152,11 +160,11 @@ void aggregate_and_save_predictions(int process_number, int test_size, int num_c
         }
     }
 
-    // Compute and save metrics if requested
+    // Compute and save metrics if path is given
     if (store_metrics_path != NULL) {
         compute_metrics(aggregated_predictions, targets, test_size, num_classes, store_metrics_path, rank);
     }
 
-    // Free allocated memory
     free(aggregated_predictions);
 }
+

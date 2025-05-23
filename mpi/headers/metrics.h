@@ -80,7 +80,7 @@ void compute_metrics(int *predictions, int *targets, int size, int num_classes, 
  * @param rank The rank of the current process in the distributed environment.
  */
 void aggregate_and_save_predictions(int process_number, int test_size, int num_classes,
-                                     int **all_predictions, int *targets,
+                                     int **all_predictions, int *tree_count, int *targets,
                                      const char *store_predictions_path, const char *store_metrics_path, int rank);
 
 #endif

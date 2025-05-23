@@ -27,7 +27,7 @@
 int parse_arguments(int argc, char *argv[], int *max_matrix_rows_print, int *num_classes, int *num_trees,
                     int *max_depth, int *min_samples_split, char **max_features, char **trained_tree_path, 
                     char **store_predictions_path, char **store_metrics_path, char **new_tree_path, 
-                    char **dataset_path, float *train_proportion, int *seed);
+                    char **dataset_path, float *train_proportion, float *train_tree_proportion, int *seed);
 
 /**
  * @brief Reads data from a CSV file into a float array.
@@ -83,7 +83,7 @@ void stratified_split(float *data, int num_rows, int num_columns, int num_classe
  * @param trained_tree_path Path to a pre-trained forest model (if used).
  * @param seed Random seed used for reproducibility.
  */
-void summary(char* dataset_path, float train_proportion, int train_size, int num_columns,
+void summary(char* dataset_path, float train_proportion, float train_tree_proportion, int train_size, int num_columns,
              int num_classes, int num_trees, int max_depth, int min_samples_split, char* max_features, 
              char* store_predictions_path, char* store_metrics_path, char* new_tree_path,
              char* trained_tree_path, int seed);
@@ -99,7 +99,7 @@ void summary(char* dataset_path, float train_proportion, int train_size, int num
  * @return Returns 0 on success, non-zero on failure
  */
 int sample_data_without_replacement(float *train_data, int train_size, int num_columns,
-                                    float sample_proportion, float *sampled_data);
+                                    float sample_proportion, float *sampled_data, int seed);
 
 /**
  * @brief Distributes trees among processes for parallel random forest training.
