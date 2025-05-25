@@ -69,7 +69,6 @@ int main(int argc, char *argv[]) {
 
 	if (rank == 0) {
 		check_dir_existence(new_forest_path);
-		printf("\n Forest path pre mode assignment = %s\n", trained_forest_path);
 		if (trained_forest_path == NULL) {
 			mode = 0;
 		} else {
@@ -79,7 +78,6 @@ int main(int argc, char *argv[]) {
 		data = read_csv(dataset_path, &num_rows, &num_columns);
 		
 		if (num_classes <= 0) {
-			printf("Inferring number of classes from the dataset...\n");
 			for (int i = 0; i < num_rows; i++) {
 				int label = (int)data[i * num_columns + (num_columns - 1)];  // Access the label
 				if (label > num_classes) {
@@ -129,7 +127,6 @@ int main(int argc, char *argv[]) {
 			// Free the buffer
 			free(sampled_data);
 		}
-		printf("Process 0 broadcasted train datasets\n");
 
 		targets = (int *)malloc(test_size * sizeof(int));
 		for (int i = 0; i < test_size; i++) {
@@ -146,11 +143,9 @@ int main(int argc, char *argv[]) {
 
 		// BASED ON MODE WE DO DIFFERENT STUFF
 		// IDEA: processo 0 legge tutti gli alberi e ha un puntatore per albero, iterare sui suoi alberi e mandare la proporzione giusta
-		printf("Process %d broadcasted mode: we are testing mode 0 where trees do not exist, we are actually using %d\n", rank, mode);
 		MPI_Bcast(&mode, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
 		if (mode == 1) {
-			printf("Found .bin files in directory: %s\n", new_forest_path);
 			
 			// Create and deserialize the forest
 			Forest *random_forest = (Forest *)malloc(sizeof(Forest));
@@ -221,7 +216,6 @@ int main(int argc, char *argv[]) {
 				if (trees_from_p > 0) {
 					MPI_Recv(all_predictions[p - 1], trees_from_p * test_size, MPI_INT,
 							 p, 3, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-					printf("Process 0: Received predictions from process %d\n", p);
 				}
 			}
 			
@@ -269,7 +263,6 @@ int main(int argc, char *argv[]) {
 				if (trees_from_p > 0) {
 					MPI_Recv(all_predictions[p - 1], trees_from_p * test_size, MPI_INT,
 							 p, 3, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-					printf("Process 0: Received predictions from process %d\n", p);
 				}
 			}
 			aggregate_and_save_predictions(process_number, test_size, num_classes,
@@ -312,12 +305,9 @@ int main(int argc, char *argv[]) {
 					free(buffer);
 					
 					tree_index++;
-					printf("Process 0: Received tree %d of %d from process %d\n", 
-						   t+1, trees_from_p, p);
 				}
 			}
 			// Serialize the complete forest to the output path
-			printf("Process %d: serializing forest to %s\n", rank, new_forest_path);
 			serialize_forest(random_forest, new_forest_path);
 
 			// Free the forest memory
@@ -335,7 +325,6 @@ int main(int argc, char *argv[]) {
 		MPI_Bcast(&test_size, 1, MPI_INT, 0, MPI_COMM_WORLD);
 		MPI_Bcast(&num_columns, 1, MPI_INT, 0, MPI_COMM_WORLD);
 		MPI_Recv(&sample_size, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-		printf("Received test_size = %d, num_columns = %d, sample_size = %d", test_size, num_columns, sample_size);
 		// Allocate memory
 		train_data = (float *)malloc(sample_size * num_columns * sizeof(float));
 		if (!train_data) {
@@ -344,9 +333,6 @@ int main(int argc, char *argv[]) {
 		// Receive train_data
 		MPI_Recv(train_data, sample_size * num_columns, MPI_FLOAT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 		
-		printf("\n");
-		printf("Num_rows = %d, Num_columns = %d, myrank = %d", sample_size, num_columns, rank);
-		printf("\n");
 		
 		// Allocate memory for targets
 		targets = (int *)malloc(test_size * sizeof(int));
@@ -379,7 +365,6 @@ int main(int argc, char *argv[]) {
 			// Worker process code for mode == 1 (existing trees)
 			int num_trees_assigned;
 			MPI_Recv(&num_trees_assigned, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-			printf("Process %d: Assigned %d trees to process\n", rank, num_trees_assigned);
 
 			if (num_trees_assigned > 0) {
 				// Create an array to store the received trees
@@ -417,7 +402,6 @@ int main(int argc, char *argv[]) {
 					// Free the buffer after deserializing
 					free(buffer);
 					
-					printf("Process %d: Received tree %d of %d\n", rank, t+1, num_trees_assigned);
 				}
 				
 				// === TIMING STARTS HERE ===
@@ -457,15 +441,10 @@ int main(int argc, char *argv[]) {
 				inference_time = infer_end - infer_start;
 				total_time = train_time + inference_time;
 				
-				printf("Process %d: Training time: %.6f seconds\n", rank, train_time);
-				printf("Process %d: Inference time: %.6f seconds\n", rank, inference_time);
-				printf("Process %d: Total time: %.6f seconds\n", rank, total_time);
-				
 				// === TIMING ENDS HERE ===
 				
 				// Send all predictions to process 0
 				MPI_Send(local_predictions, num_trees_assigned * test_size, MPI_INT, 0, 3, MPI_COMM_WORLD);
-				printf("Process %d: Sent predictions to process 0\n", rank);
 				
 				// Free local_predictions AFTER send is complete - use blocking send to ensure buffer is no longer needed
 				free(local_predictions);
@@ -481,12 +460,10 @@ int main(int argc, char *argv[]) {
 		if (mode == 0) {
 			// NO TREES IN DIRECTORY
 			// slave code
-			printf("Process %d: Preparing to train trees from scratch\n", rank);
 
 			// Receive number of trees assigned to this process
 			int num_trees_assigned;
 			MPI_Recv(&num_trees_assigned, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-			printf("Process %d: Assigned %d trees to train\n", rank, num_trees_assigned);
 
 			// === TIMING STARTS HERE ===
 			// Barrier to synchronize all processes before timing starts
@@ -510,7 +487,6 @@ int main(int argc, char *argv[]) {
 					train_tree_1d(&trees[t], train_data, sample_size, num_columns, num_classes, 
 							   max_depth, min_samples_split, max_features);
 					
-					printf("Process %d: Tree %d of %d successfully trained\n", rank, t+1, num_trees_assigned);
 				}
 				
 				// End training timing
@@ -540,6 +516,12 @@ int main(int argc, char *argv[]) {
 					free(tree_preds);  // Free memory returned by tree_inference_1d
 				}
 				
+				
+				
+				// Send the predictions to process 0
+				MPI_Send(local_predictions, num_trees_assigned * test_size, MPI_INT, 0, 3, MPI_COMM_WORLD);
+				
+				// === TIMING ENDS HERE ===
 				// End inference timing
 				infer_end = MPI_Wtime();
 				
@@ -548,21 +530,10 @@ int main(int argc, char *argv[]) {
 				inference_time = infer_end - infer_start;
 				total_time = train_time + inference_time;
 				
-				printf("Process %d: Training time: %.6f seconds\n", rank, train_time);
-				printf("Process %d: Inference time: %.6f seconds\n", rank, inference_time);
-				printf("Process %d: Total time: %.6f seconds\n", rank, total_time);
-				
-				// === TIMING ENDS HERE ===
-				
-				// Send the predictions to process 0
-				MPI_Send(local_predictions, num_trees_assigned * test_size, MPI_INT, 0, 3, MPI_COMM_WORLD);
-				printf("Process %d: Sent predictions to process 0\n", rank);
-				
 				// Free memory used for predictions
 				free(local_predictions);
 
 				// code to send trees here
-				// appunti: al momento sto mandando tutti gli alberi, c'è deadlock perchè processo 0 non li sta ricevendo.
 				// You should also send the trained trees back to process 0 for saving
 				// This would use similar serialization code as in your existing implementation
 				for (int t = 0; t < num_trees_assigned; t++) {
@@ -581,7 +552,6 @@ int main(int argc, char *argv[]) {
 					// Free the buffer
 					free(buffer);
 					
-					printf("Process %d: Sent trained tree %d of %d to process 0\n", rank, t+1, num_trees_assigned);
 				}
 				// Free the trees when done
 				for (int t = 0; t < num_trees_assigned; t++) {
@@ -596,7 +566,6 @@ int main(int argc, char *argv[]) {
 	double global_min_train_time, global_min_inference_time, global_min_total_time;
 	
 	// Use MPI_Reduce to find minimum times across all processes
-	// Note: Process 0 doesn't participate in timing, so we use dummy values for it
 	double local_train_time = (rank == 0) ? DBL_MAX : train_time;
 	double local_inference_time = (rank == 0) ? DBL_MAX : inference_time;
 	double local_total_time = (rank == 0) ? DBL_MAX : total_time;
