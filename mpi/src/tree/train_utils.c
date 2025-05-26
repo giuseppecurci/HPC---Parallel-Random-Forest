@@ -87,25 +87,17 @@ void merge_sort(float *features, float *targets, int size) {
     free(temp_targets);
 }
 
-float compute_entropy(float *split, int size, int num_classes) {
+float get_entropy(int *left_class_counts, int *right_class_counts, int left_size, int right_size, int num_classes) {
+    float left_entropy = compute_entropy(left_class_counts, left_size, num_classes);
+    float right_entropy = compute_entropy(right_class_counts, right_size, num_classes);
+    float weighted_entropy = (left_size * left_entropy + right_size * right_entropy) / (left_size + right_size);
+    
+    return weighted_entropy;
+}
+
+float compute_entropy(int *class_counts, int size, int num_classes) {
     if (size == 0) return 0.0;  // Prevent division by zero
-
-    // Allocate memory for class counts
-    int *class_counts = calloc(num_classes, sizeof(int));
-    if (!class_counts) {
-        fprintf(stderr, "Memory allocation failed!\n");
-        exit(EXIT_FAILURE);
-    }
-
-    // Count occurrences of each class
-    for (int i = 0; i < size; i++) {
-        int class_index = (int)split[i];  // Assuming classes are labeled as integers (0,1,2,...)
-        if (class_index >= 0 && class_index < num_classes) {
-            class_counts[class_index]++;
-        }
-    }
-
-    // Compute entropy
+    
     float entropy = 0.0;
     for (int i = 0; i < num_classes; i++) {
         if (class_counts[i] > 0) {
@@ -113,18 +105,7 @@ float compute_entropy(float *split, int size, int num_classes) {
             entropy -= p * log2f(p);
         }
     }
-
-    free(class_counts);
     return entropy;
-}
-
-float get_entropy(float *left_split, float *right_split, int left_size, int right_size, int num_classes) {
-    float left_entropy = compute_entropy(left_split, left_size, num_classes);
-    float right_entropy = compute_entropy(right_split, right_size, num_classes);
-    float weighted_entropy = (left_size * left_entropy + right_size * right_entropy) / (left_size + right_size);
-    
-    // Weighted entropy sum
-    return weighted_entropy;
 }
 
 float* get_best_split_num_var(
@@ -162,7 +143,7 @@ float* get_best_split_num_var(
                 right_class_counts[(int)target_array[j + left_size]]++;
             }
 
-            float entropy = get_entropy(left_split, right_split, left_size, right_size, num_classes);
+            float entropy = get_entropy(left_class_counts, right_class_counts, left_size, right_size, num_classes);
             if (entropy < best_split[0])
             {
                 best_split[0] = entropy;

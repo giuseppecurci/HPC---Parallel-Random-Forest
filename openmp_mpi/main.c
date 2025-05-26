@@ -21,6 +21,10 @@
 #include "headers/tree/train_utils.h"
 #include "headers/tree/memory_ser.h"
 
+#ifdef _OPENMP
+#include <omp.h>
+#endif
+
 int main(int argc, char *argv[]) {
     int max_matrix_rows_print = 0; // Default: print nothing
     int num_classes = -1; 
@@ -36,6 +40,7 @@ int main(int argc, char *argv[]) {
     int max_depth = 10;
     int seed = 0;
     char *dataset_path = "../data/classification_dataset.csv";  
+    int thread_count = 1;
     int num_rows, num_columns;
 	float *data;
     float *train_data, *test_data;
@@ -53,7 +58,7 @@ int main(int argc, char *argv[]) {
                                         &max_depth, &min_samples_split, &max_features,
                                         &trained_forest_path, &store_predictions_path,
                                         &store_metrics_path, &new_forest_path, &dataset_path,
-                                        &train_proportion, &train_tree_proportion, &seed);
+                                        &train_proportion, &train_tree_proportion, &seed, &thread_count);
     if (parse_result != 0) {
         printf("Error parsing arguments. Please check the command line options.\n");
         return 1;
@@ -485,7 +490,7 @@ int main(int argc, char *argv[]) {
 				for (int t = 0; t < num_trees_assigned; t++) {
 					// Train the tree and store it directly in the array at position t
 					train_tree_1d(&trees[t], train_data, sample_size, num_columns, num_classes, 
-							   max_depth, min_samples_split, max_features);
+							   max_depth, min_samples_split, max_features, thread_count);
 					
 				}
 				
@@ -516,18 +521,17 @@ int main(int argc, char *argv[]) {
 					free(tree_preds);  // Free memory returned by tree_inference_1d
 				}
 				
-				infer_end = MPI_Wtime();
-				
-				// Send the predictions to process 0
-				MPI_Send(local_predictions, num_trees_assigned * test_size, MPI_INT, 0, 3, MPI_COMM_WORLD);
-				
 				// === TIMING ENDS HERE ===
 				// End inference timing
+				infer_end = MPI_Wtime();
 				
 				// Calculate times
 				train_time = train_end - train_start;
 				inference_time = infer_end - infer_start;
 				total_time = train_time + inference_time;
+				
+				// Send the predictions to process 0
+				MPI_Send(local_predictions, num_trees_assigned * test_size, MPI_INT, 0, 3, MPI_COMM_WORLD);
 				
 				// Free memory used for predictions
 				free(local_predictions);

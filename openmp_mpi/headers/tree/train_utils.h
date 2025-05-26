@@ -11,6 +11,8 @@
 #ifndef TRAIN_UTILS_H
 #define TRAIN_UTILS_H
 
+#define EPSILON 1e-9
+
 #include "tree.h"
 
 /**
@@ -76,7 +78,7 @@ void merge_sort(float *features, float *targets, int size);
  * @param num_classes The total number of possible classes.
  * @return The computed entropy.
  */
-float compute_entropy(int *split, int size, int num_classes);
+float compute_entropy(int *class_counts, int size, int num_classes);
 
 /**
  * @brief Computes the weighted entropy for a data split.
@@ -91,8 +93,8 @@ float compute_entropy(int *split, int size, int num_classes);
  * @param num_classes The total number of target classes.
  * @return The weighted entropy for the split.
  */
-
 float get_entropy(int *left_class_counts, int *right_class_counts, int left_size, int right_size, int num_classes);
+
 /**
  * @brief Finds the best threshold for splitting a sorted feature.
  * 
@@ -105,7 +107,7 @@ float get_entropy(int *left_class_counts, int *right_class_counts, int left_size
  * @param num_classes The number of target classes.
  * @return A float array with the best entropy, threshold, and split sizes and predictions.
  */
-float* get_best_split_num_var(float *sorted_array, float *target_array, int size, int num_classes);
+float* get_best_split_num_var(float *sorted_array, float *target_array, int size, int num_classes, int thread_count);
 
 /**
  * @brief Fisher-Yates shuffle algorithm to randomize an array.
