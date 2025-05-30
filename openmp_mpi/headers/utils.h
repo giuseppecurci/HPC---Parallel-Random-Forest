@@ -114,3 +114,4 @@ int sample_data_without_replacement(float *train_data, int train_size, int num_c
  * @param displs Array to store the displacement (starting index) for each process.
  */
 void distribute_trees(int num_trees, int size, int *counts, int *displs);
+void store_run_params_processes_threads(char* csv_store_time_metrics_path, float train_time, float inference_time, int num_trees, int train_size, int process_count, int num_threads);

@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "../headers/utils.h"
+#include <sys/stat.h>
 
 int parse_arguments(int argc, char *argv[], int *max_matrix_rows_print, int *num_classes, int *num_trees,
                     int *max_depth, int *min_samples_split, char **max_features,
@@ -302,8 +303,6 @@ int sample_data_without_replacement(float *train_data, int train_size, int num_c
     return sample_size;
 }
 
-
-
 void distribute_trees(int num_trees, int size, int *counts, int *displs) {
     int base = num_trees / size;
     int rem = num_trees % size;
@@ -313,3 +312,85 @@ void distribute_trees(int num_trees, int size, int *counts, int *displs) {
         displs[i] = (i == 0) ? 0 : displs[i - 1] + counts[i - 1];
     }
 };
+void store_run_params_processes_threads(char* csv_store_time_metrics_path, float train_time, float inference_time, int num_trees, int train_size, int process_count, int num_threads) {
+    struct stat buffer;
+    int file_exists = (stat(csv_store_time_metrics_path, &buffer) == 0);
+    float speedup = -1.0f;
+    float efficiency = -1.0f;
+    float total_time = train_time + inference_time;
+	
+    printf("inside the function total_time = %f\n", total_time);
+    
+    // Calculate speedup for any configuration that's not the baseline
+    // Baseline is defined as process_count == 2 && num_threads == 1
+    if (file_exists && !(process_count == 2 && num_threads == 1)) {
+        FILE *read_file = fopen(csv_store_time_metrics_path, "r");
+        if (read_file != NULL) {
+            char line[256];
+            // Skip header
+            fgets(line, sizeof(line), read_file);
+            while (fgets(line, sizeof(line), read_file)) {
+                float recorded_train_time, recorded_inference_time, recorded_total_time;
+                int recorded_processes, recorded_threads, recorded_trees, recorded_data_size;
+                float dummy_speedup, dummy_efficiency;
+                int parsed = sscanf(line, "%f,%f,%f,%d,%d,%d,%d,%f,%f",
+                    &recorded_train_time,
+                    &recorded_inference_time,
+                    &recorded_total_time,
+                    &recorded_processes,
+                    &recorded_threads,
+                    &recorded_trees,
+                    &recorded_data_size,
+                    &dummy_speedup,
+                    &dummy_efficiency);
+                if (parsed == 9 && recorded_processes == 2 && recorded_threads == 1 &&
+                    recorded_trees == num_trees &&
+                    recorded_data_size == train_size) {
+                        speedup = recorded_total_time / total_time;
+                        efficiency = speedup / (process_count * num_threads);
+                        break;
+                }
+            }
+            fclose(read_file);
+        }
+    }
+    
+    FILE *file = fopen(csv_store_time_metrics_path, "a");
+    if (file == NULL) {
+        perror("Error opening file for appending time metrics");
+        return;
+    }
+    
+    // Write header if file is new
+    if (!file_exists) {
+        fprintf(file, "Train Time,Inference Time,Total Time,Processes, Num Threads,Num Trees,Data Size,Speedup,Efficiency\n");
+    } else {
+        // Ensure previous line ends with newline
+        fseek(file, -1, SEEK_END);
+        int last_char = fgetc(file);
+        if (last_char != '\n') {
+            fputc('\n', file);
+        }
+    }
+    
+    printf("Current speedup = %f, current efficiency = %f, current threads = %d, current processes = %d\n", speedup, efficiency, num_threads, process_count);
+    
+    if (process_count == 2 && num_threads == 1) {
+        // This is the baseline case
+        fprintf(file, "%.6f,%.6f,%.6f,%d,%d,%d,%d,1.000,1.000\n",
+            train_time, inference_time, total_time,
+            process_count, num_threads, num_trees, train_size);
+    } else if (speedup > 0 && efficiency > 0) {
+        // We found a baseline and calculated speedup
+        fprintf(file, "%.6f,%.6f,%.6f,%d,%d,%d,%d,%.3f,%.3f\n",
+            train_time, inference_time, total_time,
+            process_count, num_threads, num_trees, train_size,
+            speedup, efficiency);
+    } else {
+        // No baseline found or calculation failed
+        fprintf(file, "%.6f,%.6f,%.6f,%d,%d,%d,%d,-1.000,-1.000\n",
+            train_time, inference_time, total_time,
+            process_count, num_threads, num_trees, train_size);
+    }
+    fclose(file);
+}

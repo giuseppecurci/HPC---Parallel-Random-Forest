@@ -147,18 +147,19 @@ void aggregate_and_save_predictions(int process_number, int test_size, int num_c
     }
 
     // Save predictions if path is given
-    if (store_predictions_path != NULL) {
-        FILE *pred_file = fopen(store_predictions_path, "w");
-        if (pred_file == NULL) {
-            printf("Error opening predictions file for writing\n");
-        } else {
-            fprintf(pred_file, "true_label,predicted_label\n");
-            for (int i = 0; i < test_size; i++) {
-                fprintf(pred_file, "%d,%d\n", targets[i], aggregated_predictions[i]);
-            }
-            fclose(pred_file);
+	if (store_predictions_path != NULL) {
+    FILE *pred_file = fopen(store_predictions_path, "w");
+    if (pred_file == NULL) {
+        printf("Error opening predictions file for writing\n");
+    } else {
+        // Write header for predicted labels only (optional)
+        fprintf(pred_file, "Predictions\n");
+        for (int i = 0; i < test_size; i++) {
+            fprintf(pred_file, "%d\n", aggregated_predictions[i]);
         }
+        fclose(pred_file);
     }
+}
 
     // Compute and save metrics if path is given
     if (store_metrics_path != NULL) {
@@ -167,4 +168,3 @@ void aggregate_and_save_predictions(int process_number, int test_size, int num_c
 
     free(aggregated_predictions);
 }
-

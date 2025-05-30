@@ -40,6 +40,7 @@ int main(int argc, char *argv[]) {
     int max_depth = 10;
     int seed = 0;
     char *dataset_path = "../data/classification_dataset.csv";  
+    char *csv_store_time_metrics_path = "output/store_time_metrics.csv";
     int thread_count = 1;
     int num_rows, num_columns;
 	float *data;
@@ -566,26 +567,29 @@ int main(int argc, char *argv[]) {
 	}
 	
 	// Collect timing results from all worker processes and report minimum times
-	double global_min_train_time, global_min_inference_time, global_min_total_time;
+	double global_max_train_time, global_max_inference_time, global_max_total_time;
 	
 	// Use MPI_Reduce to find minimum times across all processes
-	double local_train_time = (rank == 0) ? DBL_MAX : train_time;
-	double local_inference_time = (rank == 0) ? DBL_MAX : inference_time;
-	double local_total_time = (rank == 0) ? DBL_MAX : total_time;
+	double local_train_time = (rank == 0) ? DBL_MIN : train_time;
+	double local_inference_time = (rank == 0) ? DBL_MIN : inference_time;
+	double local_total_time = (rank == 0) ? DBL_MIN : total_time;
 	
-	MPI_Reduce(&local_train_time, &global_min_train_time, 1, MPI_DOUBLE, MPI_MIN, 0, MPI_COMM_WORLD);
-	MPI_Reduce(&local_inference_time, &global_min_inference_time, 1, MPI_DOUBLE, MPI_MIN, 0, MPI_COMM_WORLD);
-	MPI_Reduce(&local_total_time, &global_min_total_time, 1, MPI_DOUBLE, MPI_MIN, 0, MPI_COMM_WORLD);
+	MPI_Reduce(&local_train_time, &global_max_train_time, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+	MPI_Reduce(&local_inference_time, &global_max_inference_time, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+	MPI_Reduce(&local_total_time, &global_max_total_time, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
 	
 	// Process 0 reports the minimum times
 	if (rank == 0) {
-		printf("\n=== MINIMUM TIMING RESULTS ACROSS ALL WORKER PROCESSES ===\n");
-		printf("Minimum training time: %.6f seconds\n", global_min_train_time);
-		printf("Minimum inference time: %.6f seconds\n", global_min_inference_time);
-		printf("Minimum total time: %.6f seconds\n", global_min_total_time);
+		printf("\n=== MAXIMUM TIMING RESULTS ACROSS ALL WORKER PROCESSES ===\n");
+		printf("Maximum training time: %.6f seconds\n", global_max_train_time);
+		printf("Maximum inference time: %.6f seconds\n", global_max_inference_time);
+		printf("Maximum total time: %.6f seconds\n", global_max_total_time);
 		printf("============================================================\n");
+		printf("trainsize = %d, train_tree_prop = %f, num columns = %d", train_size, train_tree_proportion, num_columns);
+
+		int tree_data_size = (int)(train_size * train_tree_proportion) * num_columns;
+		store_run_params_processes_threads(csv_store_time_metrics_path, global_max_train_time, global_max_inference_time, num_trees, tree_data_size, process_number, thread_count);
 	}
-	
 	MPI_Finalize();
 	return 0;
 }
