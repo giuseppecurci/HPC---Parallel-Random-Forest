@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 #include "../headers/utils.h"
 
 int parse_arguments(int argc, char *argv[], int *max_matrix_rows_print, int *num_classes, int *num_trees,
@@ -310,3 +311,84 @@ void distribute_trees(int num_trees, int size, int *counts, int *displs) {
         displs[i] = (i == 0) ? 0 : displs[i - 1] + counts[i - 1];
     }
 };
+
+void store_run_params_processes(char* csv_store_time_metrics_path, float train_time, float inference_time, int num_trees, int train_size, int process_count) {
+    struct stat buffer;
+    int file_exists = (stat(csv_store_time_metrics_path, &buffer) == 0);
+
+    float speedup = -1.0f;
+    float efficiency = -1.0f;
+    float total_time = train_time + inference_time;
+	
+    printf("inside the function total_time = %f\n", total_time);
+
+    // If process_count > 1, try to find the matching baseline with process_count == 2
+    if (process_count > 2 && file_exists) {
+        FILE *read_file = fopen(csv_store_time_metrics_path, "r");
+        if (read_file != NULL) {
+            char line[256];
+            // Skip header
+            fgets(line, sizeof(line), read_file);
+            while (fgets(line, sizeof(line), read_file)) {
+                float recorded_train_time, recorded_inference_time, recorded_total_time;
+                int recorded_processes, recorded_trees, recorded_data_size;
+                float dummy_speedup, dummy_efficiency;
+
+                int parsed = sscanf(line, "%f,%f,%f,%d,%d,%d,%f,%f",
+                    &recorded_train_time,
+                    &recorded_inference_time,
+                    &recorded_total_time,
+                    &recorded_processes,
+                    &recorded_trees,
+                    &recorded_data_size,
+                    &dummy_speedup,
+                    &dummy_efficiency);
+
+                if (parsed == 8 && recorded_processes == 2 &&
+                    recorded_trees == num_trees &&
+                    recorded_data_size == train_size) {
+                        speedup = recorded_total_time / total_time;
+                        efficiency = speedup / process_count;
+                        break;
+                }
+            }
+            fclose(read_file);
+        }
+    }
+
+    FILE *file = fopen(csv_store_time_metrics_path, "a");
+    if (file == NULL) {
+        perror("Error opening file for appending time metrics");
+        return;
+    }
+
+    // Write header if file is new
+    if (!file_exists) {
+        fprintf(file, "Train Time,Inference Time,Total Time,Processes,Num Trees,Data Size,Speedup,Efficiency\n");
+    } else {
+        // Ensure previous line ends with newline
+        fseek(file, -1, SEEK_END);
+        int last_char = fgetc(file);
+        if (last_char != '\n') {
+            fputc('\n', file);
+        }
+    }
+
+    if (speedup > 0 && efficiency > 0) {
+        fprintf(file, "%.6f,%.6f,%.6f,%d,%d,%d,%.3f,%.3f\n",
+            train_time, inference_time, total_time,
+            process_count, num_trees, train_size,
+            speedup, efficiency);
+    } else if (process_count == 2) {
+        fprintf(file, "%.6f,%.6f,%.6f,%d,%d,%d,1.000,1.000\n",
+            train_time, inference_time, total_time,
+            process_count, num_trees, train_size);
+    } else {
+        fprintf(file, "%.6f,%.6f,%.6f,%d,%d,%d,-1.000,-1.000\n",
+            train_time, inference_time, total_time,
+            process_count, num_trees, train_size);
+    }
+
+    fclose(file);
+}
+
