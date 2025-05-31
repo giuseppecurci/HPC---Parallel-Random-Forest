@@ -40,7 +40,6 @@ int main(int argc, char *argv[]) {
     int max_depth = 10;
     int seed = 0;
     char *dataset_path = "../data/classification_dataset.csv";  
-    char *csv_store_time_metrics_path = "output/store_time_metrics.csv";
     int thread_count = 1;
     int num_rows, num_columns;
 	float *data;
@@ -147,183 +146,26 @@ int main(int argc, char *argv[]) {
             num_trees, max_depth, min_samples_split, max_features, store_predictions_path, 
             store_metrics_path, new_forest_path, trained_forest_path, seed);
 
-		// BASED ON MODE WE DO DIFFERENT STUFF
-		// IDEA: processo 0 legge tutti gli alberi e ha un puntatore per albero, iterare sui suoi alberi e mandare la proporzione giusta
 		MPI_Bcast(&mode, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
-		if (mode == 1) {
 			
-			// Create and deserialize the forest
-			Forest *random_forest = (Forest *)malloc(sizeof(Forest));
-			if (!random_forest) {
-				perror("malloc failed for random_forest");
-				MPI_Abort(MPI_COMM_WORLD, 1);
-			}
-			
-			create_forest(random_forest, num_trees, max_depth, min_samples_split, max_features);
-			
-			deserialize_forest(random_forest, trained_forest_path);
-			
-			// Calculate distribution of trees across worker processes (ranks 1 to process_number-1)
-			int worker_count = process_number - 1;
-			int *tree_counts = (int *)malloc(worker_count * sizeof(int));
-			int *tree_displs = (int *)malloc(worker_count * sizeof(int));
-			
-			// Distribute trees among worker processes only
-			distribute_trees(random_forest->num_trees, worker_count, tree_counts, tree_displs);
-			
-			
-			// Send trees to worker processes
-			for (int p = 0; p < worker_count; p++) {
-				int target_rank = p + 1; // Worker process rank
-				
-				if (tree_counts[p] > 0) {
-					// Send number of trees to each process
-					MPI_Send(&tree_counts[p], 1, MPI_INT, target_rank, 0, MPI_COMM_WORLD);
-					
-					// Send each tree individually
-					for (int t = 0; t < tree_counts[p]; t++) {
-						int tree_idx = tree_displs[p] + t;
-						void *buffer;
-						int buffer_size;
-						
-						// Serialize the tree
-						serialize_tree_to_buffer(&random_forest->trees[tree_idx], &buffer, &buffer_size);
-						
-						// Send buffer size first
-						MPI_Send(&buffer_size, 1, MPI_INT, target_rank, 1, MPI_COMM_WORLD);
-						
-						// Then send the buffer
-						MPI_Send(buffer, buffer_size, MPI_BYTE, target_rank, 2, MPI_COMM_WORLD);
-						
-						// Free the buffer
-						free(buffer);
-					}
-				}
-			}
-			
-			// Barrier to ensure all worker processes have received their trees before timing starts
-			MPI_Barrier(MPI_COMM_WORLD);
-			
-			// Allocate space for collecting predictions from all workers
-			int **all_predictions = (int **)malloc((process_number - 1) * sizeof(int *));
-			for (int p = 0; p < process_number - 1; p++) {
-				all_predictions[p] = (int *)malloc(tree_counts[p] * test_size * sizeof(int));
-				if (!all_predictions[p]) {
-					fprintf(stderr, "Failed to allocate memory for all_predictions[%d]\n", p);
-					MPI_Abort(MPI_COMM_WORLD, 1);
-				}
-			}
+		// Calculate distribution of trees across worker processes (ranks 1 to process_number-1)
+		int worker_count = process_number - 1;
+		int *tree_counts = (int *)malloc(worker_count * sizeof(int));
+		int *tree_displs = (int *)malloc(worker_count * sizeof(int));
+		
+		// Distribute trees among worker processes only
+		distribute_trees(num_trees, worker_count, tree_counts, tree_displs);
 
-			// Receive predictions from each process
-			for (int p = 1; p < process_number; p++) {
-				int trees_from_p = tree_counts[p - 1];  // offset since tree_counts[0] is for rank 1
-
-				if (trees_from_p > 0) {
-					MPI_Recv(all_predictions[p - 1], trees_from_p * test_size, MPI_INT,
-							 p, 3, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-				}
-			}
-			
-			aggregate_and_save_predictions(process_number, test_size, num_classes,
-                               all_predictions, tree_counts, targets,
-                               store_predictions_path, store_metrics_path, rank);
-			free(tree_counts);
-			free(tree_displs);
-			free_forest(random_forest);
-
-		// fine mode = 1 
-    	}	
-		else {
-			// master code
-			printf("Mode == 0 \n");
-			
-			// Calculate distribution of trees across worker processes (ranks 1 to process_number-1)
-			int worker_count = process_number - 1;
-			int *tree_counts = (int *)malloc(worker_count * sizeof(int));
-			int *tree_displs = (int *)malloc(worker_count * sizeof(int));
-			
-			// Distribute trees among worker processes only
-			distribute_trees(num_trees, worker_count, tree_counts, tree_displs);
-
-			for (int p = 0; p < worker_count; p++) {
-				MPI_Send(&tree_counts[p], 1, MPI_INT, p + 1, 0, MPI_COMM_WORLD);
-			}
-			
-			// Barrier to ensure all worker processes have received their assignments before timing starts
-			MPI_Barrier(MPI_COMM_WORLD);
-
-			// Allocate space for collecting predictions from all workers
-			int **all_predictions = (int **)malloc((process_number - 1) * sizeof(int *));
-			for (int p = 0; p < process_number - 1; p++) {
-				all_predictions[p] = (int *)malloc(tree_counts[p] * test_size * sizeof(int));
-				if (!all_predictions[p]) {
-					fprintf(stderr, "Failed to allocate memory for all_predictions[%d]\n", p);
-					MPI_Abort(MPI_COMM_WORLD, 1);
-				}
-			}
-
-			for (int p = 1; p < process_number; p++) {
-				int trees_from_p = tree_counts[p - 1];  // offset since tree_counts[0] is for rank 1
-
-				if (trees_from_p > 0) {
-					MPI_Recv(all_predictions[p - 1], trees_from_p * test_size, MPI_INT,
-							 p, 3, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-				}
-			}
-			aggregate_and_save_predictions(process_number, test_size, num_classes,
-                               all_predictions, tree_counts, targets,
-                               store_predictions_path, store_metrics_path, rank);
-
-			// Create a forest to store the received trees
-			Forest *random_forest = (Forest *)malloc(sizeof(Forest));
-			if (!random_forest) {
-				perror("malloc failed for random_forest");
-				MPI_Abort(MPI_COMM_WORLD, 1);
-			}
-
-			// Initialize the forest structure
-			create_forest(random_forest, num_trees, max_depth, min_samples_split, max_features);
-
-			// Receive trees from worker processes and store them in the forest
-			int tree_index = 0;
-			for (int p = 1; p < process_number; p++) {
-				int trees_from_p = tree_counts[p - 1];  // Number of trees from this worker
-				
-				for (int t = 0; t < trees_from_p; t++) {
-					// Receive buffer size first
-					int buffer_size;
-					MPI_Recv(&buffer_size, 1, MPI_INT, p, 4, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-					
-					// Allocate buffer and receive serialized tree
-					void *buffer = malloc(buffer_size);
-					if (!buffer) {
-						perror("Malloc failed for tree buffer");
-						MPI_Abort(MPI_COMM_WORLD, 1);
-					}
-					
-					MPI_Recv(buffer, buffer_size, MPI_BYTE, p, 5, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-					
-					// Deserialize the tree into the forest
-					deserialize_tree_from_buffer(buffer, &random_forest->trees[tree_index]);
-					
-					// Free the buffer
-					free(buffer);
-					
-					tree_index++;
-				}
-			}
-			// Serialize the complete forest to the output path
-			serialize_forest(random_forest, new_forest_path);
-
-			// Free the forest memory
-			free_forest(random_forest);
-
-			// Note: The existing free(tree_counts) and free(tree_displs) will happen after this
-			free(tree_counts);
-			free(tree_displs);
-
+		for (int p = 0; p < worker_count; p++) {
+			MPI_Send(&tree_counts[p], 1, MPI_INT, p + 1, 0, MPI_COMM_WORLD);
 		}
+		
+		// Barrier to ensure all worker processes have received their assignments before timing starts
+		MPI_Barrier(MPI_COMM_WORLD);
+
+		free(tree_counts);
+		free(tree_displs);
 	}
 	else {
 		// FOUND TREES IN DIRECTORY
@@ -362,111 +204,8 @@ int main(int argc, char *argv[]) {
 		// receive mode
 		MPI_Bcast(&mode, 1, MPI_INT, 0, MPI_COMM_WORLD);
 	
-
-		if (mode == 1) {
-			// Worker process code for mode == 1 (existing trees)
-			// Receive number of trees assigned to this process
-			// Fixed worker process code for mode == 1 (existing trees)
-			// Receive number of trees assigned to this process
-			// Worker process code for mode == 1 (existing trees)
-			int num_trees_assigned;
-			MPI_Recv(&num_trees_assigned, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-
-			if (num_trees_assigned > 0) {
-				// Create an array to store the received trees
-				Tree *trees = (Tree *)malloc(num_trees_assigned * sizeof(Tree));
-				if (!trees) {
-					perror("Malloc failed for trees array");
-					MPI_Abort(MPI_COMM_WORLD, 1);
-				}
-				
-				// Allocate space for predictions
-				int *local_predictions = (int *)malloc(num_trees_assigned * test_size * sizeof(int));
-				if (!local_predictions) {
-					perror("Malloc failed for local_predictions");
-					MPI_Abort(MPI_COMM_WORLD, 1);
-				}
-				
-				// Receive and process each tree
-				for (int t = 0; t < num_trees_assigned; t++) {
-					// Receive buffer size first
-					int buffer_size;
-					MPI_Recv(&buffer_size, 1, MPI_INT, 0, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-					
-					// Allocate buffer and receive serialized tree
-					void *buffer = malloc(buffer_size);
-					if (!buffer) {
-						perror("Malloc failed for tree buffer");
-						MPI_Abort(MPI_COMM_WORLD, 1);
-					}
-					
-					MPI_Recv(buffer, buffer_size, MPI_BYTE, 0, 2, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-					
-					// Deserialize the tree
-					deserialize_tree_from_buffer(buffer, &trees[t]);
-					
-					// Free the buffer after deserializing
-					free(buffer);
-					
-				}
-				
-				// === TIMING STARTS HERE ===
-				// Barrier to synchronize all processes before timing starts
-				MPI_Barrier(MPI_COMM_WORLD);
-				
-				// For mode 1, we only have inference (no training)
-				train_start = 0.0;
-				train_end = 0.0;
-				
-				// Start inference timing
-				infer_start = MPI_Wtime();
-				
-				// Generate predictions for all trees
-				for (int t = 0; t < num_trees_assigned; t++) {
-					// Generate predictions for this tree
-					int *tree_preds = tree_inference_1d(&trees[t], test_data, test_size, num_columns);
-					if (!tree_preds) {
-						perror("tree_inference_1d returned NULL");
-						MPI_Abort(MPI_COMM_WORLD, 1);
-					}
-					
-					// Store predictions
-					for (int i = 0; i < test_size; i++) {
-						local_predictions[t * test_size + i] = tree_preds[i];
-					}
-					
-					// Free predictions for this tree
-					free(tree_preds);
-				}
-				
-				// End inference timing
-				infer_end = MPI_Wtime();
-				
-				// Calculate times
-				train_time = train_end - train_start;  // Will be 0 for mode 1
-				inference_time = infer_end - infer_start;
-				total_time = train_time + inference_time;
-				
-				// === TIMING ENDS HERE ===
-				
-				// Send all predictions to process 0
-				MPI_Send(local_predictions, num_trees_assigned * test_size, MPI_INT, 0, 3, MPI_COMM_WORLD);
-				
-				// Free local_predictions AFTER send is complete - use blocking send to ensure buffer is no longer needed
-				free(local_predictions);
-				
-				// Free the trees
-				for (int t = 0; t < num_trees_assigned; t++) {
-					destroy_tree(&trees[t]);
-				}
-				free(trees);
-			}
-			
-		}
 		if (mode == 0) {
-			// NO TREES IN DIRECTORY
 			// slave code
-
 			// Receive number of trees assigned to this process
 			int num_trees_assigned;
 			MPI_Recv(&num_trees_assigned, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
@@ -531,32 +270,9 @@ int main(int argc, char *argv[]) {
 				inference_time = infer_end - infer_start;
 				total_time = train_time + inference_time;
 				
-				// Send the predictions to process 0
-				MPI_Send(local_predictions, num_trees_assigned * test_size, MPI_INT, 0, 3, MPI_COMM_WORLD);
-				
 				// Free memory used for predictions
 				free(local_predictions);
 
-				// code to send trees here
-				// You should also send the trained trees back to process 0 for saving
-				// This would use similar serialization code as in your existing implementation
-				for (int t = 0; t < num_trees_assigned; t++) {
-					void *buffer;
-					int buffer_size;
-					
-					// Serialize the tree to a buffer
-					serialize_tree_to_buffer(&trees[t], &buffer, &buffer_size);
-					
-					// Send buffer size first
-					MPI_Send(&buffer_size, 1, MPI_INT, 0, 4, MPI_COMM_WORLD);  // Using tag 4 for trained trees
-					
-					// Then send the buffer
-					MPI_Send(buffer, buffer_size, MPI_BYTE, 0, 5, MPI_COMM_WORLD);  // Using tag 5 for tree data
-					
-					// Free the buffer
-					free(buffer);
-					
-				}
 				// Free the trees when done
 				for (int t = 0; t < num_trees_assigned; t++) {
 					destroy_tree(&trees[t]); 
@@ -570,9 +286,9 @@ int main(int argc, char *argv[]) {
 	double global_max_train_time, global_max_inference_time, global_max_total_time;
 	
 	// Use MPI_Reduce to find minimum times across all processes
-	double local_train_time = (rank == 0) ? DBL_MIN : train_time;
-	double local_inference_time = (rank == 0) ? DBL_MIN : inference_time;
-	double local_total_time = (rank == 0) ? DBL_MIN : total_time;
+	double local_train_time = (rank == 0) ? 0.0 : train_time;
+	double local_inference_time = (rank == 0) ? 0.0 : inference_time;
+	double local_total_time = (rank == 0) ? 0.0 : total_time;
 	
 	MPI_Reduce(&local_train_time, &global_max_train_time, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
 	MPI_Reduce(&local_inference_time, &global_max_inference_time, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
@@ -586,9 +302,25 @@ int main(int argc, char *argv[]) {
 		printf("Maximum total time: %.6f seconds\n", global_max_total_time);
 		printf("============================================================\n");
 		printf("trainsize = %d, train_tree_prop = %f, num columns = %d", train_size, train_tree_proportion, num_columns);
+		printf("\n=== MAXIMUM TIMING RESULTS ACROSS ALL WORKER PROCESSES ===\n");
+		printf("Maximum training time: %.6f seconds\n", global_max_train_time);
+		printf("Maximum inference time: %.6f seconds\n", global_max_inference_time);
+		printf("Maximum total time: %.6f seconds\n", global_max_total_time);
+		printf("============================================================\n");
+		printf("trainsize = %d, train_tree_prop = %f, num columns = %d\n", train_size, train_tree_proportion, num_columns);
 
+		char csv_store_time_metrics_path[256];
+		snprintf(csv_store_time_metrics_path, sizeof(csv_store_time_metrics_path),
+				 "output/store_time_metrics_%d_processes_%d_num_threads.csv", process_number, thread_count);
 		int tree_data_size = (int)(train_size * train_tree_proportion) * num_columns;
 		store_run_params_processes_threads(csv_store_time_metrics_path, global_max_train_time, global_max_inference_time, num_trees, tree_data_size, process_number, thread_count);
+		
+		// FIXED: Free allocated memory for master process
+		free(data);
+		free(train_data);
+		free(test_data);
+		free(targets);
+
 	}
 	MPI_Finalize();
 	return 0;
