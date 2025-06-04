@@ -47,7 +47,7 @@ int parse_arguments(int argc, char *argv[], int *max_matrix_rows_print, int *num
         else if (strcmp(argv[i], "--max_features") == 0 && i + 1 < argc) {
             *max_features = argv[i + 1];
         }
-        else if (strcmp(argv[i], "--thread_count") == 0 && i + 1 < argc) {
+        else if (strcmp(argv[i], "--n_threads") == 0 && i + 1 < argc) {
             *thread_count = atoi(argv[i + 1]);
         }
         else if (strcmp(argv[i], "--train_proportion") == 0 && i + 1 < argc) {
@@ -313,13 +313,12 @@ void distribute_trees(int num_trees, int size, int *counts, int *displs) {
     }
 };
 
-void store_run_params_processes_threads(char* csv_store_time_metrics_path, float train_time, float inference_time, int num_trees, int train_size, int process_count, int num_threads) {
+void store_run_params_processes_threads(char* csv_store_time_metrics_path, float train_time, float inference_time, float global_time, int num_trees, int train_size, int process_count, int num_threads) {
     struct stat buffer;
     int file_exists = (stat(csv_store_time_metrics_path, &buffer) == 0);
     float speedup = -1.0f;
     float efficiency = -1.0f;
-    float total_time = train_time + inference_time;
-	
+    float total_time = global_time;  // Use actual measured total time from input
 
     // Baseline is process_count == 2 && num_threads == 1
     if (file_exists && !(process_count == 2 && num_threads == 1)) {

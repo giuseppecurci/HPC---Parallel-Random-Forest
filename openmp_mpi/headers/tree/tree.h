@@ -67,28 +67,6 @@ struct Tree {
  * @return A pointer to the newly created node.
  */
 Node* create_node(int feature, float threshold, Node *left, Node *right, int pred, int depth, float entropy, int num_samples);
-
-/**
- * @brief Finds the best feature and threshold to split the data.
- * 
- * This function evaluates different features and thresholds to find
- * the split that minimizes entropy in the resulting subsets.
- * 
- * @param data The input dataset as a float array.
- * @param num_rows Number of samples in the dataset.
- * @param num_columns Number of features in the dataset (including the label).
- * @param num_classes Number of unique classes in the dataset.
- * @param class_pred_left Pointer to store the predicted class for the left split.
- * @param class_pred_right Pointer to store the predicted class for the right split.
- * @param best_size_left Pointer to store the number of samples in the left split.
- * @param best_size_right Pointer to store the number of samples in the right split.
- * @param max_features Strategy for selecting features to consider for splitting.
- * @return A BestSplit structure containing information about the best split found.
- */
-BestSplit find_best_split_1d(float *data, int num_rows, int num_columns, int num_classes, 
-                            int *class_pred_left, int *class_pred_right, 
-                            int *best_size_left, int *best_size_right, char *max_features, int num_threads);
-
 /**
  * @brief Splits the data into left and right subsets based on a feature and threshold.
  * 
@@ -172,5 +150,8 @@ int* tree_inference_1d(Tree *tree, float *data, int num_rows, int num_columns);
  */
 void mpi_train_tree(Tree *tree, float *train_data, int sample_size, int num_columns, 
                    int num_classes, int max_depth, int min_samples_split, char* max_features);
+void split_data_1d_safe(float *data, float *left_data, float *right_data, 
+                       int num_rows, int num_columns, int feature_index, float threshold,
+                       int *actual_left_size, int *actual_right_size);
 
 #endif // TREE_H

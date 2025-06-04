@@ -157,5 +157,27 @@ BestSplit find_best_split(float **data, int num_rows, int num_columns,
  */
 void split_data(float **data, float **left_data, float **right_data, int num_rows, int num_columns, int target_index, float threshold);
 
+
+/**
+ * @brief Finds the best feature and threshold to split the data.
+ * 
+ * This function evaluates different features and thresholds to find
+ * the split that minimizes entropy in the resulting subsets.
+ * 
+ * @param data The input dataset as a float array.
+ * @param num_rows Number of samples in the dataset.
+ * @param num_columns Number of features in the dataset (including the label).
+ * @param num_classes Number of unique classes in the dataset.
+ * @param class_pred_left Pointer to store the predicted class for the left split.
+ * @param class_pred_right Pointer to store the predicted class for the right split.
+ * @param best_size_left Pointer to store the number of samples in the left split.
+ * @param best_size_right Pointer to store the number of samples in the right split.
+ * @param max_features Strategy for selecting features to consider for splitting.
+ * @return A BestSplit structure containing information about the best split found.
+ */
+BestSplit find_best_split_1d(float *data, int num_rows, int num_columns, int num_classes, 
+                            int *class_pred_left, int *class_pred_right, 
+                            int *best_size_left, int *best_size_right, char *max_features, int num_threads);
+
 #endif // TRAIN_UTILS_H
 

@@ -1,6 +1,7 @@
 #ifndef FOREST_BUFFER_SERIALIZATION_H
 #define FOREST_BUFFER_SERIALIZATION_H
 
+#include <string.h>
 #include "forest.h"
 
 /**

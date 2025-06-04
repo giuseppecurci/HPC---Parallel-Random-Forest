@@ -43,18 +43,41 @@ void get_class_pred(float** data, int num_rows, int num_columns, int num_classes
  * @brief Recursively frees memory allocated for the nodes and the tree itself.
  */
 void destroy_tree(Tree *tree) {
+    if (tree == NULL) return;
+    if (tree->root == NULL) return;
+    
+    printf("Destroying tree with root at %p\n", tree->root);
+    fflush(stdout);
+    
     destroy_node(tree->root);
-};
+    tree->root = NULL;  // Prevent double-free
+    
+    printf("Tree destruction completed\n");
+    fflush(stdout);
+}
 
 /**
  * @brief Recursively frees memory allocated for a node and its children.
  */
 void destroy_node(Node *node) {
     if (node == NULL) return;
-    destroy_node(node->left);
-    destroy_node(node->right);
+    
+    // Store children before potential corruption
+    Node *left_child = node->left;
+    Node *right_child = node->right;
+    
+    // Clear pointers to prevent issues
+    node->left = NULL;
+    node->right = NULL;
+    
+    // Recursively destroy children
+    destroy_node(left_child);
+    destroy_node(right_child);
+    
+    // Free this node
     free(node);
-};
+}
+
 
 /**
  * @brief Prints the structure and contents of a tree.

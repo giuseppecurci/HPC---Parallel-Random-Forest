@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <time.h>
 #include <string.h>
 #include <math.h>
+
 #include "../../headers/tree/train_utils.h" 
 #include "../../headers/tree/tree.h"
 #include "../../headers/tree/utils.h"
@@ -85,65 +85,24 @@ void merge_sort(float *features, float *targets, int size) {
         free(temp_targets);
         return;
     }
-    merge_sort_helper(features, targets, temp_features, temp_targets, 0, size - 1);
+
+	merge_sort_helper(features, targets, temp_features, temp_targets, 0, size - 1);
     
     free(temp_features);
     free(temp_targets);
 }
 
-// quiquiqui
-//
-float* get_best_split_num_var(
-    float *sorted_array, 
-    float *target_array, 
-    int size, 
-    int num_classes,
-    int num_threads)
-{
-    float* best_split = malloc(6 * sizeof(float));
-    best_split[0] = INFINITY;  
-    best_split[1] = 0.0;
-    best_split[2] = best_split[3] = best_split[4] = best_split[5] = -1;
+float compute_entropy(int *class_counts, int size, int num_classes) {
     
-    int left_class_counts[num_classes];
-    int right_class_counts[num_classes];
-    
-    #pragma omp parallel for num_threads(num_threads) private(left_class_counts, right_class_counts)
-    for (int i = 0; i < size - 1; i++)
-    {   
-        float avg = (sorted_array[i] + sorted_array[i + 1]) / 2;
-        int left_size = i + 1;
-        int right_size = size - i - 1; 
-        
-        memset(left_class_counts, 0, num_classes * sizeof(int));
-        memset(right_class_counts, 0, num_classes * sizeof(int));
-        
-        for (int j = 0; j < left_size; j++) {
-            left_class_counts[(int)target_array[j]]++;
-        }
-        for (int j = 0; j < right_size; j++) {
-            right_class_counts[(int)target_array[j + left_size]]++;
-        }
-    
-        float entropy = get_entropy(left_class_counts, right_class_counts, left_size, right_size, num_classes);
-        
-        #pragma omp critical 
-        {
-            if (
-                (entropy + EPSILON < best_split[0]) || 
-                (fabs(entropy - best_split[0]) < EPSILON && avg < best_split[1])
-            )
-            {
-                best_split[0] = entropy;
-                best_split[1] = avg;
-                best_split[2] = left_size;
-                best_split[3] = right_size;
-                best_split[4] = argmax(left_class_counts, num_classes);
-                best_split[5] = argmax(right_class_counts, num_classes);
-            }
+    float entropy = 0.0;
+    for (int i = 0; i < num_classes; i++) {
+        if (class_counts[i] > 0) {
+            float p = (float)class_counts[i] / size;
+            entropy -= p * log2f(p);
         }
     }
-    return best_split;
+
+	return entropy;
 }
 
 float get_entropy(int *left_class_counts, int *right_class_counts, int left_size, int right_size, int num_classes) {
@@ -154,20 +113,60 @@ float get_entropy(int *left_class_counts, int *right_class_counts, int left_size
     return weighted_entropy;
 }
 
-float compute_entropy(int *class_counts, int size, int num_classes) {
-    if (size == 0) return 0.0;  // Prevent division by zero
-    
-    float entropy = 0.0;
-    for (int i = 0; i < num_classes; i++) {
-        if (class_counts[i] > 0) {
-            float p = (float)class_counts[i] / size;
-            entropy -= p * log2f(p);
-        }
-    }
-    return entropy;
-}
+float* get_best_split_num_var(
+    float *sorted_array, 
+    float *target_array, 
+    int size, 
+    int num_classes,
+	int n_threads)
+	{
+		float* best_split = malloc(6 * sizeof(float));
+		best_split[0] = INFINITY;  
+		best_split[1] = 0.0;
+		best_split[2] = best_split[3] = best_split[4] = best_split[5] = -1;
 
+		int left_class_counts[num_classes];
+		int right_class_counts[num_classes];
+		
+		#pragma omp parallel for num_threads(n_threads) private(left_class_counts, right_class_counts)
+		for (int i = 0; i < size - 1; i++)
+		{
 
+			float avg = (sorted_array[i] + sorted_array[i + 1]) / 2;
+			int left_size = i + 1;
+			int right_size = size - i - 1; 
+			
+			memset(left_class_counts, 0, num_classes * sizeof(int));
+			memset(right_class_counts, 0, num_classes * sizeof(int));
+			
+			for (int j = 0; j < left_size; j++) {
+				left_class_counts[(int)target_array[j]]++;
+			}
+			for (int j = 0; j < right_size; j++) {
+				right_class_counts[(int)target_array[j + left_size]]++;
+			}
+		
+			float entropy = get_entropy(left_class_counts, right_class_counts, left_size, right_size, num_classes);
+		
+			#pragma omp critical 
+			{
+				if (
+					(entropy + EPSILON < best_split[0]) || 
+					(fabs(entropy - best_split[0]) < EPSILON && avg < best_split[1])
+				)
+				{
+					best_split[0] = entropy;
+					best_split[1] = avg;
+					best_split[2] = left_size;
+					best_split[3] = right_size;
+					best_split[4] = argmax(left_class_counts, num_classes);
+					best_split[5] = argmax(right_class_counts, num_classes);
+				}
+			}
+		}
+		
+		return best_split;
+	}
 
 void shuffle(int *array, int size) {
     // Fisher-Yates shuffle algorithm
@@ -183,6 +182,80 @@ void shuffle(int *array, int size) {
 }
 
 
+BestSplit find_best_split_1d(float *data, int num_rows, int num_columns, 
+                          int num_classes, int *class_pred_left, int *class_pred_right,
+                          int *best_size_left, int *best_size_right, char *max_features, int num_threads) 
+						{
+    BestSplit best_split = {INFINITY, 0.0, -1};
+    int target_column = num_columns - 1;  // Assuming target column is the last one
+
+    int features_to_consider = num_columns - 1; // Exclude target column
+    int selected_features[features_to_consider]; // contains the indices of columns to consider
+    int num_selected_features = 0;
+
+    // Handle different max_features scenarios
+    if (strcmp(max_features, "sqrt") == 0) {
+        num_selected_features = (int) sqrt(features_to_consider);
+    } else if (strcmp(max_features, "log2") == 0) {
+        num_selected_features = (int) (log(features_to_consider) / log(2));
+    } else {
+        num_selected_features = atoi(max_features);
+    }
+    
+    // Create a list of feature indices to consider    
+    for (int i = 0; i < features_to_consider; i++) {
+        selected_features[i] = i;
+    }
+    
+    // Randomly shuffle all features 
+    shuffle(selected_features, features_to_consider);
+
+    // Loop over the first num_selected_features columns which were randomized
+    for (int i = 0; i < num_selected_features; i++) {
+        int feature_col = selected_features[i];
+
+        if (feature_col == target_column){ 
+            fprintf(stderr, "Error in function best_split you have selected the feature column\n");
+            exit(EXIT_FAILURE);}
+        // Allocate arrays for sorting
+        float *feature_values = malloc(num_rows * sizeof(float));
+        float *target_values = malloc(num_rows * sizeof(float));
+        if (!feature_values || !target_values) {
+            fprintf(stderr, "Memory allocation failed!\n");
+            exit(EXIT_FAILURE);
+        }
+
+        // Extract feature column and corresponding target values from 1D array
+        for (int j = 0; j < num_rows; j++) {
+            feature_values[j] = data[j * num_columns + feature_col];
+            target_values[j] = data[j * num_columns + target_column];
+        }
+
+        // Sort the feature and target values together
+        merge_sort(feature_values, target_values, num_rows);
+
+        // Find best split for this feature
+        float *feature_best_split = get_best_split_num_var(feature_values, target_values, num_rows, num_classes, num_threads);
+        
+        // Update the global best split if a lower entropy is found
+        if (feature_best_split[0] < best_split.entropy) {
+            best_split.entropy = feature_best_split[0];
+            best_split.threshold = feature_best_split[1];
+            *best_size_left = (int) feature_best_split[2];
+            *best_size_right = (int) feature_best_split[3];
+            *class_pred_left = (int) feature_best_split[4];
+            *class_pred_right = (int) feature_best_split[5];
+            best_split.feature_index = feature_col;
+        }
+
+        // Free allocated memory
+        free(feature_best_split);
+        free(feature_values);
+        free(target_values);
+    }
+
+    return best_split;
+}
 
 void split_data(float** data, float** left_data, float** right_data, int num_rows, int num_columns, int target_index, float threshold) {
     int left_index = 0;

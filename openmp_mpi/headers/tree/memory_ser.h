@@ -5,6 +5,7 @@
 
 #ifndef TREE_SERIALIZATION_H
 #define TREE_SERIALIZATION_H
+#include <string.h>
 
 #include "tree.h"
 #include <mpi.h>
