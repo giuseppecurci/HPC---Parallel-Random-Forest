@@ -93,6 +93,7 @@ int main(int argc, char *argv[]) {
             fprintf(stderr, "Process 0: Failed to read CSV data\n");
             MPI_Abort(MPI_COMM_WORLD, 1);
         }
+		global_start = MPI_Wtime();
 
         
         printf("Process 0: Dataset loaded - %d rows, %d columns\n", num_rows, num_columns);
@@ -117,7 +118,6 @@ int main(int argc, char *argv[]) {
                 store_metrics_path, new_forest_path, trained_forest_path, seed);
     }
 	
-	global_start = MPI_Wtime();
 
     // Broadcast dataset dimensions and parameters to all processes
     MPI_Bcast(&num_rows, 1, MPI_INT, 0, MPI_COMM_WORLD);
@@ -174,7 +174,6 @@ int main(int argc, char *argv[]) {
 
     // Calculate sample size for training
     sample_size = (int)(train_tree_proportion * train_size);
-
 
     printf("Process %d: Sample size per tree: %d (%.2f%% of %d)\n", 
            rank, sample_size, train_tree_proportion * 100, train_size);
